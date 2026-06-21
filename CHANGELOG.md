@@ -70,6 +70,10 @@ commits to. **Read the breaking changes below before upgrading from 0.x.**
 - Hardened agent SDK (fails closed on a malformed/unreachable sidecar); redacted store-URL credentials
   in errors; non-root Docker runtime; safe numeric env parsing.
 
+> _The `v0.2.0`–`v0.2.7` tags were pre-1.0 development releases used to exercise the standalone-binary
+> and container release pipeline; their changes are consolidated into 1.0.0 above and are not
+> documented as separate entries._
+
 ## [0.1.0]
 
 - Initial release: SDK + sidecar + verdict engine, signed hash-chained provenance, fintech and

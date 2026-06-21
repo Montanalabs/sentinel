@@ -32,7 +32,7 @@ src/engine       verdict engine (tiers, budget, aggregation, HA append)
 src/store        provenance store (in-memory + SQLite + Postgres)
 src/provenance   signing + hash-chain + verify
 src/policy-packs registry + built-in packs
-src/sidecar      HTTP server, dashboard, escalations, bootstrap, CLI entry
+src/sidecar      HTTP server, escalations, bootstrap, adjudication-protocol routes
 src/cli          the `sentinel` CLI (init / start / keygen / verify)
 docs/            self-hosting, API, policy packs, connectors, SDK guides
 (SDKs are separate packages: `@montanalabs/sentinel-sdk` on npm + `sentinel-guard` on PyPI)

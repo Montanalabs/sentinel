@@ -278,7 +278,12 @@ surfaces — a breaking change to any of them means a **major** version bump:
 - the **provenance record + signature format** and the **adjudication-receipt format** — a breaking
   change here also bumps the on-disk chain version, and old chains/receipts are flagged, never
   silently accepted;
-- the documented `SENTINEL_*` environment variables and the published package exports.
+- the documented `SENTINEL_*` environment variables and the CLI commands.
+
+These are what a deployer consumes: the standalone binary, the Docker image, and the HTTP API. The
+embedding/extension API (`import { … } from 'sentinel'` for custom connectors/packs — see
+[connectors.md](./docs/connectors.md)) requires running from source and is **not** yet a stabilized,
+published surface; it stabilizes when the `sentinel` package is published to npm.
 
 Internal modules (anything not in the above) may change in a minor release. Deprecations are announced
 in [CHANGELOG.md](./CHANGELOG.md) at least one minor version before removal. The 0.x → 1.0.0 upgrade
