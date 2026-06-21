@@ -68,9 +68,11 @@ curl -fsSL https://montanalabs.ai/sentinel/install.cmd -o install.cmd && install
 
 _Homebrew and WinGet packages are planned — for now use the install scripts above or Docker._
 
-> The `montanalabs.ai/sentinel/install.*` URLs redirect to the scripts in this repo. If the redirect
+> The `montanalabs.ai/sentinel/install.*` URLs redirect to the scripts in this repo. If a redirect
 > isn't reachable, install directly from GitHub:
-> `curl -fsSL https://raw.githubusercontent.com/montanalabs/sentinel/main/scripts/install.sh | bash`
+> - **sh** (macOS/Linux/WSL): `curl -fsSL https://raw.githubusercontent.com/montanalabs/sentinel/main/scripts/install.sh | bash`
+> - **PowerShell**: `irm https://raw.githubusercontent.com/montanalabs/sentinel/main/scripts/install.ps1 | iex`
+> - **CMD**: `curl -fsSL https://raw.githubusercontent.com/montanalabs/sentinel/main/scripts/install.cmd -o install.cmd && install.cmd`
 
 Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run the sidecar.
 

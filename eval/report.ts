@@ -64,8 +64,8 @@ export function formatMarkdown(results: EvalResults): string {
     ``,
     `## Reading the table`,
     ``,
-    `- **3 → 4** the independent adjudicator + fail-safe rule closes the *evidence-downgrade* and *subtle unsafe-proposal* columns that deterministic checks alone cannot.`,
-    `- **4 → 5** execution-bound, single-use receipts drive *substitution*, *replay*, and *forged-auth* to zero — the gap no proposal-time verifier can close.`,
+    `- **3 → 4** the fail-safe rule closes the *evidence-downgrade* column structurally (the real adjudicator escalates on unavailable evidence). The *unsafe-proposal* drop reflects an **idealized** independent verifier — the harness models the second-opinion model as a perfect oracle (always BLOCK on an unsafe action) — so it bounds what a *flawless* verifier achieves, not a property of the adjudicator logic itself.`,
+    `- **4 → 5** execution-bound, single-use receipts drive *substitution*, *replay*, and *forged-auth* to zero — the structural gap **no** proposal-time verifier, however good, can close.`,
     ``,
   ].join('\n');
 }

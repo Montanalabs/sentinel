@@ -29,15 +29,20 @@ unsafe or unauthorized action actually executed:
 | 4 · independent adjudication (decision-only) | 0.00 | 1.00 | 1.00 | 1.00 | 0.00 |
 | 5 · full protocol (execution-bound receipts) | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
-(Unsafe-proposal rates for rungs 2–3 vary with the seed; the others are structural and stable.)
+(Unsafe-proposal rates for rungs 2–3 vary with the seed. The execution-time columns — substitution,
+replay, forged — are **structural and stable**: rungs 1–4 score 1.00 regardless of model quality. The
+rung-4 *unsafe-proposal* `0.00` is **not** structural — see the modeling note below.)
 
 Two deltas carry the contribution:
 
-- **3 → 4** — the independent adjudicator and its fail-safe rule close the *evidence-downgrade*
-  column and the *subtle* unsafe proposals that deterministic checks alone miss.
+- **3 → 4** — the fail-safe rule closes the *evidence-downgrade* column **structurally** (the real
+  adjudicator escalates on unavailable evidence). The *unsafe-proposal* drop reflects an **idealized**
+  verifier (see below), so it bounds what a flawless independent reviewer achieves — it is not a
+  property of the adjudicator logic.
 - **4 → 5** — execution-bound, single-use receipts drive *substitution*, *replay*, and *forged-auth*
   to zero. This is the gap **no proposal-time verifier can close**, however good its judgment: rung 4
-  is an ideal independent verifier and still scores 1.00 on all three.
+  is an ideal independent verifier and still scores 1.00 on all three. **This is the load-bearing
+  result, and it does not depend on model accuracy.**
 
 Plus three guarantee figures:
 
@@ -57,3 +62,9 @@ Plus three guarantee figures:
 - The matrix deliberately does **not** depend on model accuracy for the execution-time columns
   (substitution / replay / forged): those attacks present a *benign* proposal and strike at execution,
   so they succeed against rungs 1–4 regardless of how good the verifier is. That is the point.
+- For the **unsafe-proposal** column, rungs 4–5 feed the real adjudicator a model signal that is a
+  **hardcoded `BLOCK` oracle** on every unsafe action. So the rung-4 `0.00` there measures an *idealized
+  perfect independent verifier*, not the adjudicator's own judgment — it shows that even a flawless
+  proposal-time reviewer is necessary-but-not-sufficient (rung 5 is still needed for the execution-time
+  columns). The genuinely structural results are the execution-time columns and the evidence-downgrade
+  column (a real fail-safe-escalate path).
