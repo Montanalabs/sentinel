@@ -118,4 +118,23 @@ describe('auditCompleteMediation', () => {
     expect(r.executionsChecked).toBe(3);
     expect(r.coverage).toBeCloseTo(2 / 3);
   });
+
+  test('a REJECTED substitution-attempt receipt is not a violation (blocked != executed)', () => {
+    const auth = freshAuth();
+    // The executor refused a substitution: it signs a REJECTED receipt whose actualActionDigest is
+    // the unsafe action. This must NOT be audited as ACTION_SUBSTITUTION, and must not lower coverage.
+    const rejected = execFor(auth, { actualActionDigest: 'b'.repeat(64), executionStatus: ExecutionStatus.Rejected });
+    const r = auditCompleteMediation({ authorizationReceipts: [auth], executionReceipts: [execFor(auth), rejected], ...keys() });
+    expect(r.valid).toBe(true);
+    expect(r.executionsChecked).toBe(1); // only the real execution counts
+    expect(r.coverage).toBe(1);
+  });
+
+  test('REJECTED replay attempts do not trigger ReplayedAuthorization', () => {
+    const auth = freshAuth(); // maxExecutions = 1
+    const reject = (): ExecutionReceipt => execFor(auth, { executionStatus: ExecutionStatus.Rejected });
+    const r = auditCompleteMediation({ authorizationReceipts: [auth], executionReceipts: [execFor(auth), reject(), reject()], ...keys() });
+    expect(r.violations.map((v) => v.type)).not.toContain(AuditViolationType.ReplayedAuthorization);
+    expect(r.valid).toBe(true);
+  });
 });

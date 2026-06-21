@@ -10,7 +10,7 @@
  */
 
 import { authorizationReceiptDigest, verifyReceiptSignature, type AuthorizationReceipt } from './authorization-receipt.js';
-import { verifyExecutionReceiptSignature, type ExecutionReceipt } from './execution-receipt.js';
+import { verifyExecutionReceiptSignature, ExecutionStatus, type ExecutionReceipt } from './execution-receipt.js';
 import { Verdict } from '../core/types.js';
 
 /** The ways an execution can violate complete mediation. */
@@ -76,14 +76,21 @@ export function auditCompleteMediation(input: AuditInput): AuditReport {
   for (const a of input.authorizationReceipts) {
     (authById.get(a.receiptId) ?? authById.set(a.receiptId, []).get(a.receiptId)!).push(a);
   }
+  // Only actual executions are subject to complete mediation. A REJECTED receipt records a refusal
+  // *before* execution (the handler never ran and the single-use nonce was never consumed), so it is
+  // not a protected execution — auditing it as one would flag a correctly-blocked attack as a
+  // violation and let an attacker poison the audit by reporting blocked-attempt receipts. SUCCEEDED /
+  // FAILED / PARTIALLY_COMPLETED all consumed the authorization and are audited.
+  const executions = input.executionReceipts.filter((e) => e.executionStatus !== ExecutionStatus.Rejected);
+
   // Count executions per authorization to detect replay (more executions than the slot allows).
   const execCountByAuth = new Map<string, number>();
-  for (const e of input.executionReceipts) {
+  for (const e of executions) {
     execCountByAuth.set(e.authorizationReceiptId, (execCountByAuth.get(e.authorizationReceiptId) ?? 0) + 1);
   }
 
   let clean = 0;
-  for (const exec of input.executionReceipts) {
+  for (const exec of executions) {
     const before = violations.length;
     const add = (type: AuditViolationType, detail: string): void => {
       violations.push({ type, executionId: exec.executionId, authorizationReceiptId: exec.authorizationReceiptId, detail });
@@ -130,7 +137,7 @@ export function auditCompleteMediation(input: AuditInput): AuditReport {
     if (violations.length === before) clean++;
   }
 
-  const executionsChecked = input.executionReceipts.length;
+  const executionsChecked = executions.length;
   return {
     valid: violations.length === 0,
     executionsChecked,
