@@ -12,8 +12,7 @@ import pg from 'pg';
 import type { ProvenanceRecord } from '../provenance/record.js';
 import type { ProvenanceFilter, ProvenanceStore } from './types.js';
 import { DuplicateRecordError, NonMonotonicSeqError } from './errors.js';
-
-const { Pool } = pg;
+import { pgPool } from './pg-connect.js';
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS provenance_records (
@@ -60,8 +59,7 @@ export class PostgresStore implements ProvenanceStore {
    *   schema DDL (or the optional TRUNCATE) cannot be executed.
    */
   static async connect(url: string, opts: PostgresStoreOptions = {}): Promise<PostgresStore> {
-    const pool = new Pool({ connectionString: url });
-    await pool.query(DDL);
+    const pool = await pgPool(url, DDL);
     if (opts.reset) await pool.query('TRUNCATE provenance_records');
     return new PostgresStore(pool);
   }

@@ -9,6 +9,7 @@
 
 import pg from 'pg';
 import type { NonceConsumeResult, NonceStore } from './nonce-store.js';
+import { pgPool } from './pg-connect.js';
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS receipt_nonces (
@@ -31,8 +32,7 @@ export class PostgresNonceStore implements NonceStore {
    * @throws Propagated from the driver if the connection or DDL fails.
    */
   static async connect(url: string, opts: { reset?: boolean } = {}): Promise<PostgresNonceStore> {
-    const pool = new pg.Pool({ connectionString: url });
-    await pool.query(DDL);
+    const pool = await pgPool(url, DDL);
     if (opts.reset) await pool.query('TRUNCATE receipt_nonces');
     return new PostgresNonceStore(pool);
   }

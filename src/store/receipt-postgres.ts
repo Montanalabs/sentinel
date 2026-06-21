@@ -10,6 +10,7 @@
 import pg from 'pg';
 import type { AuthorizationReceipt } from '../protocol/authorization-receipt.js';
 import type { ReceiptStore } from './receipt-store.js';
+import { pgPool } from './pg-connect.js';
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS authorization_receipts (
@@ -32,8 +33,7 @@ export class PostgresReceiptStore implements ReceiptStore {
    * @returns A ready store.
    */
   static async connect(url: string, opts: { reset?: boolean } = {}): Promise<PostgresReceiptStore> {
-    const pool = new pg.Pool({ connectionString: url });
-    await pool.query(DDL);
+    const pool = await pgPool(url, DDL);
     if (opts.reset) await pool.query('TRUNCATE authorization_receipts');
     return new PostgresReceiptStore(pool);
   }

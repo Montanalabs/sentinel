@@ -10,6 +10,7 @@
 import pg from 'pg';
 import type { ExecutionReceipt } from '../protocol/execution-receipt.js';
 import type { ExecutionReceiptStore } from './execution-store.js';
+import { pgPool } from './pg-connect.js';
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS execution_receipts (
@@ -33,8 +34,7 @@ export class PostgresExecutionReceiptStore implements ExecutionReceiptStore {
    * @returns A ready store.
    */
   static async connect(url: string, opts: { reset?: boolean } = {}): Promise<PostgresExecutionReceiptStore> {
-    const pool = new pg.Pool({ connectionString: url });
-    await pool.query(DDL);
+    const pool = await pgPool(url, DDL);
     if (opts.reset) await pool.query('TRUNCATE execution_receipts');
     return new PostgresExecutionReceiptStore(pool);
   }
