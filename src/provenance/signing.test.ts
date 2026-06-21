@@ -19,7 +19,7 @@ describe('Signer (Ed25519)', () => {
 
   test('keyId is namespaced and hex', () => {
     const s = Signer.fromSeed(Buffer.alloc(32, 9));
-    expect(s.keyId).toMatch(/^ed25519:[0-9a-f]{16}$/);
+    expect(s.keyId).toMatch(/^ed25519:[0-9a-f]{64}$/);
   });
 
   test('sign then verify succeeds', () => {

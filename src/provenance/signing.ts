@@ -30,17 +30,20 @@ function spkiToRaw(pub: KeyObject): Buffer {
 }
 
 /**
- * Derive the short, stable key id for a raw Ed25519 public key.
+ * Derive the stable key id for a raw Ed25519 public key.
  *
- * The id is `ed25519:` + the first 16 hex chars of the key's SHA-256. Because it is a pure
- * function of the key, {@link verifyRecord} can recompute it to assert a record's claimed `keyId`
- * actually belongs to its embedded `signerPublicKey` (preventing key/keyId mismatch).
+ * The id is `ed25519:` + the **full** SHA-256 of the key (64 hex). Because it is a pure, collision-
+ * resistant function of the key, {@link verifyRecord} can recompute it to assert a record's claimed
+ * `keyId` actually belongs to its embedded `signerPublicKey`. The full digest (not a truncated
+ * fingerprint) is deliberate: chain verification trusts a record by `keyId` membership and then
+ * checks the embedded key, so a truncated id would let a store-write attacker forge a key colliding
+ * a trusted id at feasible work — with the full hash that requires a SHA-256 second preimage (~2²⁵⁶).
  *
  * @param raw - The 32-byte raw Ed25519 public key.
- * @returns The `ed25519:<hex16>` key id.
+ * @returns The `ed25519:<hex64>` key id.
  */
 export function keyIdFor(raw: Buffer): string {
-  return 'ed25519:' + createHash('sha256').update(raw).digest('hex').slice(0, 16);
+  return 'ed25519:' + createHash('sha256').update(raw).digest('hex');
 }
 
 /**

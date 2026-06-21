@@ -42,7 +42,7 @@ describe('RecordBuilder hash-chain', () => {
 
   test('record carries signer keyId and public key', () => {
     const r = builder().append(input(), '2026-06-13T00:00:00.000Z');
-    expect(r.keyId).toMatch(/^ed25519:[0-9a-f]{16}$/);
+    expect(r.keyId).toMatch(/^ed25519:[0-9a-f]{64}$/);
     expect(typeof r.signerPublicKey).toBe('string');
     expect(typeof r.sig).toBe('string');
   });
