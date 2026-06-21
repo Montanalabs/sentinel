@@ -1,6 +1,6 @@
 {
   "name": "sentinel",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "description": "Sentinel — the independent verification & action-gate between an AI agent's decision and a consequential action.",
   "license": "Apache-2.0",
