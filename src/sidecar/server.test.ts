@@ -47,6 +47,23 @@ describe('sidecar HTTP server', () => {
     expect(res.json()).toMatchObject({ status: 'ok' });
   });
 
+  test('GET /readyz reports ready when the store is reachable', async () => {
+    const res = await app.inject({ method: 'GET', url: '/readyz' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ status: 'ready' });
+  });
+
+  test('GET /readyz returns 503 when the store is unavailable', async () => {
+    const s = new InMemoryStore();
+    s.tail = async () => {
+      throw new Error('connection refused');
+    };
+    const builder = new RecordBuilder(Signer.fromSeed(Buffer.alloc(32, 42)));
+    const brokenApp = buildServer({ engine: new Engine({ resolve: () => [], builder, store: s }), store: s, escalations: new EscalationManager(), builder });
+    const res = await brokenApp.inject({ method: 'GET', url: '/readyz' });
+    expect(res.statusCode).toBe(503);
+  });
+
   test('POST /v1/guard allows a small payment', async () => {
     const res = await guard(app, 100);
     expect(res.statusCode).toBe(200);

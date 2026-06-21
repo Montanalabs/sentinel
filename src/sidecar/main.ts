@@ -115,6 +115,29 @@ async function main(): Promise<void> {
   for (const f of files) watchFile(f, { interval: 800 }, schedule);
 }
 
+// Graceful shutdown: on SIGTERM/SIGINT (k8s/ECS pod termination, Ctrl+C) stop accepting connections,
+// let Fastify drain in-flight /v1 requests (which include the serialized provenance append), close
+// the store, then exit — so no in-flight decision is dropped and the chain critical section is not
+// cut mid-append. A hard-exit timer bounds the drain so a stuck connection can't hang termination.
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(dim(`\n↓ ${signal} — draining in-flight requests and shutting down…`));
+  const hard = setTimeout(() => process.exit(1), 10_000);
+  hard.unref();
+  try {
+    if (current) await current.close();
+    console.log(dim('✓ drained; bye'));
+    process.exit(0);
+  } catch (err) {
+    console.error(danger('shutdown error:'), (err as Error).message);
+    process.exit(1);
+  }
+}
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+
 main().catch((err) => {
   console.error(danger('Sentinel sidecar failed to start:'), err);
   process.exit(1);

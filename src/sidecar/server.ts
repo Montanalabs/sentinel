@@ -181,7 +181,21 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
     app.addHook('onRequestAbort', async (req) => free(req));
   }
 
-  app.get('/healthz', async () => ({ status: 'ok', keyId: undefined }));
+  // Liveness: the process is up and serving. Intentionally does NOT touch the store — a DB blip must
+  // not make k8s kill an otherwise-healthy pod (that's readiness' job).
+  app.get('/healthz', async () => ({ status: 'ok' }));
+
+  // Readiness: the gate can actually decide — i.e. the provenance store is reachable. Returns 503
+  // when the store is down so a load balancer / k8s readiness probe drains the pod instead of
+  // routing traffic to a sidecar that would fail every append.
+  app.get('/readyz', async (_req, reply) => {
+    try {
+      await deps.store.tail();
+      return { status: 'ready' };
+    } catch {
+      return httpError(reply, 503, 'store unavailable');
+    }
+  });
 
   // Decision analytics over the provenance chain (API only; no bundled UI).
   app.get('/v1/analytics', async () => {
