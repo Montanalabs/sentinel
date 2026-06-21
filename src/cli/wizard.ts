@@ -9,7 +9,7 @@
  * can run against a real readline interface in the CLI or a stub in tests.
  */
 
-import { ProviderKind, PackId, StoreKind, type ScaffoldOptions } from './scaffold.js';
+import { ProviderKind, PackId, StoreKind, DEFAULT_POSTGRES_URL, type ScaffoldOptions } from './scaffold.js';
 import { generateSigningSeed } from './keygen.js';
 import { success, warn, dim } from '../term/colors.js';
 
@@ -27,9 +27,6 @@ import { success, warn, dim } from '../term/colors.js';
  * @returns The operator's raw (untrimmed) answer, or `def` when none is given.
  */
 export type Ask = (label: string, prompt: string, def: string) => Promise<string>;
-
-// Matches scaffold.ts and the generated docker-compose (host port 5432:5432).
-const DEFAULT_DB = 'postgres://sentinel:sentinel@localhost:5432/sentinel';
 
 const PROVIDERS: readonly string[] = [ProviderKind.Mock, ProviderKind.Anthropic, ProviderKind.OpenAI];
 
@@ -107,7 +104,7 @@ export async function runWizard(ask: Ask): Promise<ScaffoldOptions> {
     storeAns === StoreKind.Postgres ? StoreKind.Postgres : storeAns === StoreKind.Sqlite ? StoreKind.Sqlite : StoreKind.Memory;
   let databaseUrl: string | undefined;
   if (store === StoreKind.Postgres) {
-    databaseUrl = (await ask('db', 'Postgres URL', DEFAULT_DB)).trim() || DEFAULT_DB;
+    databaseUrl = (await ask('db', 'Postgres URL', DEFAULT_POSTGRES_URL)).trim() || DEFAULT_POSTGRES_URL;
   } else if (store === StoreKind.Sqlite) {
     const path = (await ask('db', 'SQLite file path', './sentinel.db')).trim() || './sentinel.db';
     databaseUrl = `sqlite:${path}`;

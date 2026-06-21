@@ -4,6 +4,22 @@ All notable changes to Sentinel are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-06-21
+
+`sentinel init` onboarding fixes — no API surface change.
+
+- **Bundled Postgres moved to host port `5433`** (container stays 5432) so the wizard's
+  `docker compose` Postgres can no longer collide with a Postgres already running natively on 5432.
+- **Bring-your-own Postgres is respected.** When `SENTINEL_DATABASE_URL` is set to anything other
+  than the bundled compose URL, the wizard no longer starts a Docker container — it connects the
+  sidecar straight to your database (native localhost, RDS, Neon, …).
+- **No-Docker path is no longer a dead end.** If Docker (or the `docker compose` plugin) is absent,
+  the wizard guides you to the zero-infra SQLite store (`sqlite:./sentinel.db`), your own Postgres,
+  or installing Docker — instead of failing.
+- **Bring-up is branded and fail-loud.** Docker's raw output is hidden behind a Sentinel spinner;
+  a failed bring-up (e.g. port in use) now stops with an actionable message rather than silently
+  starting the sidecar against the wrong database.
+
 ## [1.0.0] - 2026-06-21
 
 First stable release. See **[API stability](./README.md#api-stability--versioning)** for what 1.0.0

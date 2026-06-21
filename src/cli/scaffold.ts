@@ -67,7 +67,15 @@ interface Resolved {
   readonly signingSeed: string;
 }
 
-const DEFAULT_DB = 'postgres://sentinel:sentinel@localhost:5432/sentinel';
+/**
+ * Connection URL for the Postgres the wizard bundles via the generated `docker-compose.yml`.
+ *
+ * Host port is **5433** (not the standard 5432) on purpose: it maps to the container's 5432 but
+ * cannot collide with a Postgres already running natively on the operator's machine. The wizard
+ * treats this exact value as "the gate owns this database" — supplying any other URL means
+ * bring-your-own Postgres and the wizard will not start a container (see {@link scaffoldFiles}).
+ */
+export const DEFAULT_POSTGRES_URL = 'postgres://sentinel:sentinel@localhost:5433/sentinel';
 
 /**
  * Strip newlines/control chars from a free-text value before it is written into generated config
@@ -88,7 +96,7 @@ function resolve(o: ScaffoldOptions): Resolved {
     provider,
     model: oneLine(o.model ?? (provider === ProviderKind.OpenAI ? 'gpt-5.5' : 'claude-sonnet-4-6')),
     store: o.store ?? StoreKind.Memory,
-    databaseUrl: oneLine(o.databaseUrl ?? (o.store === StoreKind.Sqlite ? 'sqlite:./sentinel.db' : DEFAULT_DB)),
+    databaseUrl: oneLine(o.databaseUrl ?? (o.store === StoreKind.Sqlite ? 'sqlite:./sentinel.db' : DEFAULT_POSTGRES_URL)),
     packs: o.packs && o.packs.length ? o.packs : [PackId.Fintech],
     customPack: o.customPack ?? true,
     signingSeed: oneLine(o.signingSeed ?? ''),
@@ -130,7 +138,8 @@ function composeFile(r: Resolved): string {
       POSTGRES_USER: sentinel
       POSTGRES_PASSWORD: sentinel
       POSTGRES_DB: sentinel
-    ports: ["5432:5432"]
+    # Host 5433 -> container 5432, so this never collides with a Postgres already on 5432.
+    ports: ["5433:5432"]
 
   sentinel:
     image: ghcr.io/montanalabs/sentinel:latest

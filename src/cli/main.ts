@@ -14,13 +14,52 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve, basename, relative } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { stdin, stdout } from 'node:process';
-import { scaffoldFiles, StoreKind, type ScaffoldOptions } from './scaffold.js';
+import { scaffoldFiles, StoreKind, DEFAULT_POSTGRES_URL, type ScaffoldOptions } from './scaffold.js';
 import { runWizard, type Ask } from './wizard.js';
 import { generateSigningSeed } from './keygen.js';
-import { heroBanner, startBanner, accent } from './brand.js';
+import { heroBanner, startBanner, accent, dim, colorEnabled } from './brand.js';
+import { success, danger } from '../term/colors.js';
 import { VERSION } from './version.js';
+
+/** Braille spinner frames for the branded Postgres bring-up animation. */
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'] as const;
+
+/**
+ * Bring up the wizard's bundled Postgres via `docker compose up -d postgres`, hiding Docker's raw
+ * output behind a branded spinner. Returns the captured stderr so the caller can give an actionable
+ * message (e.g. port-in-use) when the bring-up fails.
+ *
+ * @param cwd - Scaffolded project directory containing the generated `docker-compose.yml`.
+ * @returns `{ ok }` true when the container started; `stderr` carries Docker's diagnostics on failure.
+ */
+async function bringUpPostgres(cwd: string): Promise<{ ok: boolean; stderr: string }> {
+  const animate = process.stdout.isTTY && colorEnabled();
+  const label = 'Spinning up Postgres · first run pulls the image…';
+  let stderr = '';
+  if (!animate) stdout.write(`  ${accent('✦')} ${dim(label)}\n`);
+  return await new Promise((resolveP) => {
+    const child = spawn('docker', ['compose', 'up', '-d', 'postgres'], { cwd });
+    let i = 0;
+    const timer = animate
+      ? setInterval(() => {
+          const frame = SPINNER_FRAMES[i++ % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0];
+          stdout.write(`\r  ${accent(frame)} ${dim(label)}`);
+        }, 90)
+      : undefined;
+    child.stdout?.on('data', () => {}); // drain Docker's progress so it stays hidden
+    child.stderr?.on('data', (d: Buffer) => (stderr += d.toString()));
+    child.on('error', (e: Error) => (stderr += e.message));
+    child.on('close', (code) => {
+      if (timer) {
+        clearInterval(timer);
+        stdout.write('\r\x1b[2K'); // wipe the spinner line before the caller prints the result
+      }
+      resolveP({ ok: code === 0, stderr });
+    });
+  });
+}
 
 /** Print the usage banner and command list to stdout. */
 function help(): void {
@@ -111,20 +150,40 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
   writeScaffold(target, opts);
 
   if (startNow) {
-    // A Postgres gate needs the database up first, or `sentinel start` dead-ends on a connection
-    // error. Bring it up via the scaffolded compose if Docker is available; otherwise guide the
-    // operator and don't crash-start.
+    // A Postgres gate needs the database reachable first, or `sentinel start` dead-ends on a
+    // connection error. The wizard only manages the Postgres *it* bundles (the DEFAULT_POSTGRES_URL
+    // compose service); a user-supplied URL is bring-your-own and Docker is left untouched.
     if (opts.store === StoreKind.Postgres) {
-      const hasDocker = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' }).status === 0;
-      if (hasDocker) {
-        stdout.write('\nStarting Postgres (docker compose up -d postgres)…\n');
-        spawnSync('docker', ['compose', 'up', '-d', 'postgres'], { cwd: target, stdio: 'inherit' });
+      const usesBundledPostgres = opts.databaseUrl === DEFAULT_POSTGRES_URL;
+      if (!usesBundledPostgres) {
+        // Operator pointed SENTINEL_DATABASE_URL at their own Postgres — respect it, no container.
+        stdout.write(`\n  ${success('✓')} ${dim('Using your Postgres (SENTINEL_DATABASE_URL) — skipping Docker.')}\n`);
       } else {
-        stdout.write(
-          `\nYour gate uses Postgres — start it first, then run the sidecar:\n  cd ${rel}\n` +
-            `  docker compose up -d postgres   # or point SENTINEL_DATABASE_URL in .env at your own Postgres\n  sentinel start\n`,
-        );
-        return; // don't auto-start into a connection error
+        // `docker compose version` is non-zero when Docker is absent OR only the legacy v1
+        // `docker-compose` (no `compose` subcommand) is installed — both mean we can't bring it up.
+        const hasDocker = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' }).status === 0;
+        if (!hasDocker) {
+          stdout.write(
+            `\n  ${danger('✗')} The bundled Postgres needs Docker (with the \`docker compose\` plugin), which isn't available.\n` +
+              `  ${dim('Pick one, then')} ${accent(`cd ${rel} && sentinel start`)}${dim(':')}\n` +
+              `    ${accent('•')} ${dim('No infra:')} set ${accent('SENTINEL_DATABASE_URL=sqlite:./sentinel.db')} ${dim('in .env — durable, single-node, no server.')}\n` +
+              `    ${accent('•')} ${dim('Your own Postgres:')} set ${accent('SENTINEL_DATABASE_URL')} ${dim('to its URL (local, RDS, Neon, …).')}\n` +
+              `    ${accent('•')} ${dim('Install Docker:')} ${dim('https://docs.docker.com/get-docker/, then re-run')} ${accent('sentinel init')}${dim('.')}\n`,
+          );
+          return; // don't auto-start into a connection error
+        }
+        const pg = await bringUpPostgres(target);
+        if (!pg.ok) {
+          const portClash = /already (allocated|in use)|address already in use|bind for/i.test(pg.stderr);
+          stdout.write(
+            `\n  ${danger('✗')} Couldn't start the bundled Postgres.\n` +
+              (portClash
+                ? `  Host port 5433 is already in use. Free it, or set SENTINEL_DATABASE_URL in .env to your own\n  Postgres, then run 'sentinel start'.\n`
+                : `  ${dim(pg.stderr.trim().split('\n').slice(-3).join('\n  '))}\n  Fix the above (or point SENTINEL_DATABASE_URL at your own Postgres), then run 'sentinel start'.\n`),
+          );
+          return; // never start the sidecar into a missing/foreign database
+        }
+        stdout.write(`  ${success('✓')} ${dim('Postgres ready on localhost:5433')}\n`);
       }
     }
     // --watch so edits to .env (e.g. adding your API key) are picked up live during onboarding.

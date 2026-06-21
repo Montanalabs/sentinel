@@ -24,7 +24,7 @@ describe('runWizard', () => {
   test('applies sensible defaults when answers are blank', async () => {
     const opts = await runWizard(ask({})); // everything falls back to def
     expect(opts).toMatchObject({ name: 'my-sentinel', port: 4000, provider: 'mock', store: 'postgres', packs: ['fintech'], customPack: true });
-    expect(opts.databaseUrl).toBe('postgres://sentinel:sentinel@localhost:5432/sentinel'); // default store -> default db url
+    expect(opts.databaseUrl).toBe('postgres://sentinel:sentinel@localhost:5433/sentinel'); // default store -> bundled-compose db url (host 5433)
     expect(opts.model).toBeUndefined();          // mock provider -> no model prompt
     expect(Buffer.from(opts.signingSeed!, 'base64')).toHaveLength(32); // default 'y' -> seed generated
   });
