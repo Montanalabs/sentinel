@@ -75,6 +75,13 @@ export interface SentinelConfig {
   databaseUrl?: string;
   /** TCP port the sidecar HTTP server binds to. */
   sidecarPort: number;
+  /**
+   * Address the sidecar binds to. Defaults to `127.0.0.1` (loopback only) — the `/v1/*` API is
+   * unauthenticated, so it must not be exposed beyond a trusted boundary by default. Set
+   * `SENTINEL_HOST=0.0.0.0` to listen on all interfaces (the container image does this); when you do,
+   * keep the gate behind a trusted network / mTLS / API gateway.
+   */
+  host?: string;
   /** Secret seed for signing provenance records; ephemeral key is used when absent. */
   signingSeed?: string;
   /** Identifier of the second-opinion provider to use (e.g. `mock`, `anthropic`, `openai`). */
@@ -164,6 +171,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SentinelConfig
   return {
     ...(env.SENTINEL_DATABASE_URL ? { databaseUrl: env.SENTINEL_DATABASE_URL } : {}),
     sidecarPort: posInt(env.SENTINEL_SIDECAR_PORT, 65535) ?? 4000,
+    ...(env.SENTINEL_HOST ? { host: env.SENTINEL_HOST } : {}),
     ...(env.SENTINEL_SIGNING_SEED ? { signingSeed: env.SENTINEL_SIGNING_SEED } : {}),
     secondOpinionProvider: env.SENTINEL_SECOND_OPINION_PROVIDER ?? 'mock',
     ...(env.SENTINEL_SECOND_OPINION_MODEL ? { secondOpinionModel: env.SENTINEL_SECOND_OPINION_MODEL } : {}),

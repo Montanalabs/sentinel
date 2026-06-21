@@ -69,11 +69,15 @@ async function boot(): Promise<boolean> {
     const overrides = await buildOverrides();
     const built = await buildSentinel(config, { ...overrides, ...(signer ? { signer } : {}) });
     signer = built.signer; // capture so the next reload reuses this identity
-    await built.app.listen({ port: config.sidecarPort, host: '0.0.0.0' });
+    // Default to loopback: the /v1/* API is unauthenticated, so it must not be exposed beyond a
+    // trusted boundary unless the operator opts in with SENTINEL_HOST=0.0.0.0.
+    const host = config.host ?? '127.0.0.1';
+    await built.app.listen({ port: config.sidecarPort, host });
     current = built;
     const extra = overrides.extraPacks?.length ? `, +${overrides.extraPacks.length} custom pack(s)` : '';
+    const shown = host === '0.0.0.0' ? `0.0.0.0:${config.sidecarPort}` : `http://localhost:${config.sidecarPort}`;
     console.log(
-      `${success('✓')} ${bold('Sentinel')} sidecar listening on ${accent(`http://localhost:${config.sidecarPort}`)} ` +
+      `${success('✓')} ${bold('Sentinel')} sidecar listening on ${accent(shown)} ` +
         dim(`(signer ${built.signer.keyId}, provider ${config.secondOpinionProvider}${extra})`),
     );
     printPreflight(config);

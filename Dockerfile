@@ -16,6 +16,9 @@ RUN npm run build
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+# The sidecar defaults to loopback (the /v1/* API is unauthenticated); in a container it must bind all
+# interfaces to be reachable via -p. Keep the published port behind a trusted network / gateway.
+ENV SENTINEL_HOST=0.0.0.0
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
