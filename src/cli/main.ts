@@ -12,7 +12,7 @@
  */
 
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { dirname, join, resolve, basename } from 'node:path';
+import { dirname, join, resolve, basename, relative } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { spawnSync } from 'node:child_process';
 import { stdin, stdout } from 'node:process';
@@ -67,23 +67,22 @@ function writeScaffold(target: string, opts: ScaffoldOptions): void {
 /**
  * Run the `sentinel init` command: configure, scaffold, and optionally bootstrap.
  *
- * In `interactive` mode an operator is walked through {@link runWizard} and asked
- * whether to install dependencies and start the sidecar; otherwise defaults are
- * used (derived from `dir`) and nothing is installed or started. Always writes the
- * project files via {@link writeScaffold}, then prints next-step guidance.
+ * In `interactive` mode an operator is walked through {@link runWizard} and asked whether to start
+ * the sidecar; otherwise defaults are used. The project is always scaffolded into a dedicated
+ * directory — the explicit `dir` if given, else a subfolder named after the project — so `init`
+ * never dumps files into the current directory. Generated files run on the `sentinel` binary (or
+ * the Docker image); there is no `npm install` step.
  *
- * @param dir - Target directory (relative or absolute); defaults to the current
- *   directory, with the project name derived from its basename.
+ * @param dir - Target directory (relative or absolute). When omitted, a subfolder named after the
+ *   project is created in the current directory.
  * @param interactive - Whether to prompt the operator (TTY) or accept defaults.
  * @throws Propagates wizard rejections from {@link runWizard} and filesystem
  *   errors from {@link writeScaffold}.
  */
 async function init(dir: string | undefined, interactive: boolean): Promise<void> {
-  const target = resolve(dir ?? '.');
-  const nameDefault = dir ? basename(target) : 'my-sentinel';
+  const nameDefault = dir ? basename(resolve(dir)) : 'my-sentinel';
 
   let opts: ScaffoldOptions = { name: nameDefault };
-  let installNow = false;
   let startNow = false;
 
   if (interactive) {
@@ -96,25 +95,30 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
     stdout.write('\nConfigure your Sentinel gate:\n\n');
     opts = await runWizard(ask);
     stdout.write('\n');
-    installNow = (await rl.question('Install dependencies now? [Y/n]: ')).trim().toLowerCase() !== 'n';
-    startNow = (await rl.question('Start the sidecar when ready? [Y/n]: ')).trim().toLowerCase() !== 'n';
+    startNow = (await rl.question('Start the sidecar now? [Y/n]: ')).trim().toLowerCase() !== 'n';
     rl.close();
   }
+
+  // Always scaffold into a folder of its own: the explicit dir, else a subfolder named after the
+  // project. Never the bare cwd (which dumped files into the user's home).
+  const folder = (dir ?? opts.name ?? 'my-sentinel').trim().replace(/\s+/g, '-') || 'my-sentinel';
+  const target = resolve(folder);
+  const rel = relative(process.cwd(), target) || '.';
 
   stdout.write(`\nScaffolding into ${target}:\n`);
   writeScaffold(target, opts);
 
-  if (installNow) {
-    stdout.write('\nInstalling dependencies…\n');
-    spawnSync('npm', ['install'], { cwd: target, stdio: 'inherit' });
-  }
   if (startNow) {
     stdout.write('\nStarting the sidecar (Ctrl+C to stop)…\n');
-    spawnSync('npm', ['start'], { cwd: target, stdio: 'inherit' });
+    const res = spawnSync('sentinel', ['start'], { cwd: target, stdio: 'inherit' });
+    if (res.error) {
+      stdout.write(`\nCould not run 'sentinel start' (${res.error.message}).\n  cd ${rel} && sentinel start\n`);
+    }
   } else {
-    const cd = dir ? `cd ${dir} && ` : '';
-    const next = installNow ? 'npm start' : 'npm install && npm start';
-    stdout.write(`\nDone. Next: ${cd}${next}\n  console → http://localhost:${opts.port ?? 4000}/dashboard\n`);
+    stdout.write(
+      `\nDone. Next:\n  cd ${rel}\n  sentinel keygen   # optional: set SENTINEL_SIGNING_SEED in .env for a stable identity\n` +
+        `  sentinel start    # console → http://localhost:${opts.port ?? 4000}/dashboard\n`,
+    );
   }
 }
 

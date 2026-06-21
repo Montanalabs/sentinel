@@ -1,13 +1,12 @@
 /**
  * Project scaffolding for the `sentinel init` CLI command.
  *
- * Turns the answers collected by the wizard (see {@link ScaffoldOptions}) into the
- * full set of source and config files for a self-hosted Sentinel gate — `.env`,
- * `src/server.ts`, Docker assets, `package.json`, and an optional custom policy
- * pack. The generated `server.ts` wires the engine, store, signer, second-opinion
- * provider, and the selected built-in {@link PackId} packs. This module only emits
- * file contents as strings; the CLI ({@link file://./main.ts}) is responsible for
- * writing them to disk.
+ * Turns the answers collected by the wizard (see {@link ScaffoldOptions}) into the config files for
+ * a self-hosted Sentinel gate that runs on the `sentinel` binary (or the official Docker image) —
+ * `.env`, `.gitignore`, a `docker-compose.yml` using the published image, a `README.md`, and an
+ * optional commented `sentinel.config.mjs` customization template. It emits **no** npm project or
+ * source to compile: the binary already contains the engine and built-in {@link PackId} packs.
+ * This module only returns file contents as strings; the CLI ({@link file://./main.ts}) writes them.
  */
 
 /** Cross-model second-opinion provider a scaffolded gate is wired for. */
@@ -68,7 +67,7 @@ interface Resolved {
   readonly signingSeed: string;
 }
 
-const DEFAULT_DB = 'postgres://sentinel:sentinel@localhost:5433/sentinel';
+const DEFAULT_DB = 'postgres://sentinel:sentinel@localhost:5432/sentinel';
 
 /**
  * Strip newlines/control chars from a free-text value before it is written into generated config
@@ -109,7 +108,7 @@ SENTINEL_SECOND_OPINION_MODEL=${r.model}
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 
-# base64 Ed25519 seed for a STABLE signing identity (npx sentinel keygen)
+# base64 Ed25519 seed for a STABLE signing identity (run: sentinel keygen)
 SENTINEL_SIGNING_SEED=${r.signingSeed}
 
 # Optional
@@ -121,97 +120,8 @@ SENTINEL_MAX_CONCURRENT=
 `;
 }
 
-function serverFile(r: Resolved): string {
-  const usesFintech = r.packs.includes(PackId.Fintech);
-  const usesHealth = r.packs.includes(PackId.Healthcare);
-
-  const named = [
-    'loadEnvFile',
-    'loadConfig',
-    'PolicyRegistry',
-    'Engine',
-    'RecordBuilder',
-    'Signer',
-    'openStore',
-    'buildServer',
-    'EscalationManager',
-    'makeProvider',
-    ...(usesFintech ? ['fintechPaymentsPack', 'StaticLedgerConnector'] : []),
-    ...(usesHealth ? ['healthcareRecordsPack', 'StaticClinicalConnector'] : []),
-  ];
-
-  const deps: string[] = ['provider'];
-  const wires: string[] = [];
-  if (usesFintech) {
-    wires.push("const ledger = new StaticLedgerConnector({ balances: { acct_ops: 1_000_000 }, sanctioned: [] });");
-    deps.push('ledger');
-  }
-  if (usesHealth) {
-    wires.push("const clinical = new StaticClinicalConnector({ patients: ['p1'] });");
-    deps.push('clinical');
-  }
-
-  const registers = [
-    ...(usesFintech ? ['  .register(fintechPaymentsPack({ highValueThreshold: 25_000 }))'] : []),
-    ...(usesHealth ? ['  .register(healthcareRecordsPack())'] : []),
-    ...(r.customPack ? ['  .register(myPack())'] : []),
-  ];
-
-  return `import {
-  ${named.join(',\n  ')},
-} from 'sentinel';
-${r.customPack ? "import { myPack } from './my-pack.js';\n" : ''}
-loadEnvFile();
-const config = loadConfig();
-
-const store = await openStore(config.databaseUrl);
-const signer = config.signingSeed ? Signer.fromSeed(Buffer.from(config.signingSeed, 'base64')) : Signer.generate();
-const builder = new RecordBuilder(signer);
-const tail = await store.tail();
-if (tail) builder.resume(tail.contentHash, tail.seq + 1);
-
-const provider = makeProvider(config.secondOpinionProvider, {
-  ...(config.anthropicApiKey ? { apiKey: config.anthropicApiKey } : {}),
-  ...(config.secondOpinionModel ? { model: config.secondOpinionModel } : {}),
-});
-${wires.length ? '\n' + wires.join('\n') + '\n' : ''}
-const registry = new PolicyRegistry({ ${deps.join(', ')} })
-${registers.join('\n')};
-
-const engine = new Engine({ resolve: (id) => registry.resolve(id), builder, store });
-const app = buildServer({ engine, store, escalations: new EscalationManager(), builder });
-
-await app.listen({ port: config.sidecarPort, host: '0.0.0.0' });
-console.log('Sentinel listening on :' + config.sidecarPort + ' (signer ' + signer.keyId + ')');
-`;
-}
-
-const MY_PACK_TS = `import { SchemaCheck, PolicyCheck, type Check } from 'sentinel';
-import type { PackDeps, PolicyPack } from 'sentinel';
-
-// A starter custom pack. Compose checks; see docs/policy-packs.md for the full reference.
-export function myPack(): PolicyPack {
-  return {
-    id: 'my.actions',
-    build(_deps: PackDeps): Check[] {
-      return [
-        new SchemaCheck({
-          email: { type: 'object', required: ['to', 'subject'], properties: { to: { type: 'string' }, subject: { type: 'string' } } },
-        }),
-        new PolicyCheck({
-          id: 'my.actions',
-          rules: [
-            { id: 'external_email', when: { not: { field: 'action.payload.to', op: 'contains', value: '@acme.com' } },
-              effect: 'require_approval', approvers: ['comms'], reason: 'external recipient' },
-          ],
-        }),
-      ];
-    },
-  };
-}
-`;
-
 function composeFile(r: Resolved): string {
+  // Pull the official prebuilt image — no Dockerfile/npm build in the user's project.
   if (r.store === StoreKind.Postgres) {
     return `services:
   postgres:
@@ -220,10 +130,10 @@ function composeFile(r: Resolved): string {
       POSTGRES_USER: sentinel
       POSTGRES_PASSWORD: sentinel
       POSTGRES_DB: sentinel
-    ports: ["5433:5432"]
+    ports: ["5432:5432"]
 
   sentinel:
-    build: .
+    image: ghcr.io/montanalabs/sentinel:latest
     env_file: .env
     environment:
       SENTINEL_DATABASE_URL: postgres://sentinel:sentinel@postgres:5432/sentinel
@@ -234,7 +144,7 @@ function composeFile(r: Resolved): string {
   // memory / sqlite: just the sidecar. A volume persists the SQLite file across restarts.
   return `services:
   sentinel:
-    build: .
+    image: ghcr.io/montanalabs/sentinel:latest
     env_file: .env
     ports: ["${r.port}:${r.port}"]
     volumes:
@@ -245,67 +155,71 @@ volumes:
 `;
 }
 
-const DOCKERFILE = `FROM node:22-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 4000
-CMD ["npx", "tsx", "src/server.ts"]
-`;
+const GITIGNORE = '.env\n.env.local\n*.log\n*.db\n*.db-wal\n*.db-shm\ndata/\n';
 
-const GITIGNORE = 'node_modules/\n.env.local\n*.log\n*.db\n*.db-wal\n*.db-shm\ndata/\n';
+/**
+ * Optional customization file, auto-loaded by `sentinel start` (and the Docker image) if present.
+ * Building custom connectors/packs needs the `@montanalabs/sentinel` library — so this ships as a
+ * commented template that is a no-op until the user opts in. `export {}` keeps it a valid, empty
+ * ES module so loading never fails.
+ */
+const SENTINEL_CONFIG = `// Optional Sentinel customization — loaded automatically by \`sentinel start\`.
+//
+// Export \`ledger\`, \`clinical\`, and/or \`packs\` to plug your own ground-truth connectors and
+// policy packs into the gate. This requires the \`@montanalabs/sentinel\` library (npm); install it,
+// then uncomment and adapt the example below.
+//
+// import { StaticLedgerConnector } from '@montanalabs/sentinel';
+//
+// export const ledger = new StaticLedgerConnector({
+//   balances: { acct_ops: 1_000_000 },
+//   sanctioned: [],
+// });
+//
+// export const packs = [ /* your custom PolicyPack(s) */ ];
+
+export {};
+`;
 
 function readme(r: Resolved): string {
   return `# ${r.name}
 
 A self-hosted [Sentinel](https://github.com/montanalabs/sentinel) action-gate.
-Packs: ${r.packs.join(', ')}${r.customPack ? ' + my.actions (custom)' : ''} · provider: ${r.provider} · store: ${r.store}.
-
-> **Prerequisite:** this project depends on the \`sentinel\` npm package. If \`npm install\` cannot
-> find it, the package is not published to your registry yet — install it from the Sentinel repo
-> (\`npm install /path/to/sentinel\`) or your private registry before running.
+Packs: ${r.packs.join(', ')}${r.customPack ? ' + sentinel.config.mjs (custom)' : ''} · provider: ${r.provider} · store: ${r.store}.
 
 ## Run
-\`\`\`bash
-npm install
-npx sentinel keygen   # paste into SENTINEL_SIGNING_SEED in .env (else an ephemeral key is used each boot)
-npm start             # sidecar on :${r.port}  ·  console at http://localhost:${r.port}/dashboard
-\`\`\`
-Or with Docker: \`docker compose up\`.
 
-## Customize
-- \`src/my-pack.ts\` — your policy pack.
-- \`src/server.ts\` — wire your real connectors and register packs.
+Install the \`sentinel\` CLI (see https://github.com/montanalabs/sentinel#install-the-cli), then from this folder:
+
+\`\`\`bash
+sentinel keygen        # paste the seed into SENTINEL_SIGNING_SEED in .env (else an ephemeral key each boot)
+sentinel start         # sidecar on :${r.port}  ·  console at http://localhost:${r.port}/dashboard
+\`\`\`
+
+Or with Docker (pulls the official image — no CLI needed):
+
+\`\`\`bash
+docker compose up
+\`\`\`
+
+## Configure
+- \`.env\` — store, second-opinion provider, API keys, signing seed.${
+    r.customPack
+      ? `\n- \`sentinel.config.mjs\` — your custom connectors / policy packs (needs the \`@montanalabs/sentinel\` library).`
+      : ''
+  }
 `;
 }
 
-function packageJson(r: Resolved): string {
-  return (
-    JSON.stringify(
-      {
-        name: r.name,
-        private: true,
-        type: 'module',
-        scripts: { start: 'tsx src/server.ts' },
-        dependencies: { sentinel: '^0.1.0', tsx: '^4.19.2' },
-      },
-      null,
-      2,
-    ) + '\n'
-  );
-}
-
 /**
- * Render the complete file set for a self-hosted Sentinel project.
+ * Render the file set for a self-hosted Sentinel project that runs on the `sentinel` binary (or the
+ * official Docker image) — no npm install, no build step.
  *
- * Resolves {@link ScaffoldOptions} against defaults, then emits the project's
- * `.env`, `.gitignore`, Docker assets, `package.json`, `README.md`, and
- * `src/server.ts` (pre-wired for the chosen {@link ProviderKind}, {@link StoreKind},
- * and {@link PackId} packs). A `src/my-pack.ts` starter is included only when a
- * custom pack was requested. The result is a map of project-relative path to file
- * contents; callers decide how to write it (the CLI skips files that already
- * exist on disk).
+ * Resolves {@link ScaffoldOptions} against defaults, then emits `.env`, `.gitignore`,
+ * `docker-compose.yml` (using the published image), and a `README.md`. A commented
+ * `sentinel.config.mjs` customization template is included only when a custom pack was requested.
+ * The result is a map of project-relative path to file contents; callers decide how to write it
+ * (the CLI skips files that already exist on disk).
  *
  * @param opts - Operator choices; an empty object produces a runnable default gate.
  * @returns A map from project-relative file path to that file's textual contents.
@@ -316,11 +230,8 @@ export function scaffoldFiles(opts: ScaffoldOptions = {}): Record<string, string
     '.env': envFile(r),
     '.gitignore': GITIGNORE,
     'docker-compose.yml': composeFile(r),
-    'Dockerfile': DOCKERFILE,
-    'package.json': packageJson(r),
     'README.md': readme(r),
-    'src/server.ts': serverFile(r),
   };
-  if (r.customPack) files['src/my-pack.ts'] = MY_PACK_TS;
+  if (r.customPack) files['sentinel.config.mjs'] = SENTINEL_CONFIG;
   return files;
 }

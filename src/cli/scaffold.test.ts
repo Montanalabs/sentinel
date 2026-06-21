@@ -4,40 +4,36 @@ import { scaffoldFiles, StoreKind } from './scaffold.js';
 describe('scaffoldFiles', () => {
   const files = scaffoldFiles({ name: 'acme-gate' });
 
-  test('emits the core self-host files', () => {
+  test('emits config-only files that the binary/Docker image runs — no npm project', () => {
     const paths = Object.keys(files);
-    expect(paths).toEqual(expect.arrayContaining(['.env', 'docker-compose.yml', 'Dockerfile', 'package.json', 'src/server.ts', 'src/my-pack.ts', 'README.md', '.gitignore']));
+    expect(paths).toEqual(expect.arrayContaining(['.env', 'docker-compose.yml', 'README.md', '.gitignore']));
+    // The old npm-project artifacts must NOT be generated (they depended on an unpublished package).
+    expect(paths).not.toContain('package.json');
+    expect(paths).not.toContain('Dockerfile');
+    expect(paths).not.toContain('src/server.ts');
   });
 
-  test('.env documents the key Sentinel variables', () => {
+  test('.env documents the key Sentinel variables and is gitignored', () => {
     expect(files['.env']).toContain('SENTINEL_SIDECAR_PORT');
     expect(files['.env']).toContain('SENTINEL_DATABASE_URL');
     expect(files['.env']).toContain('SENTINEL_SECOND_OPINION_PROVIDER');
+    expect(files['.gitignore']).toContain('.env'); // secrets must not be committed
   });
 
-  test('package.json names the project and depends on sentinel', () => {
-    const pkg = JSON.parse(files['package.json']!);
-    expect(pkg.name).toBe('acme-gate');
-    expect(pkg.dependencies).toHaveProperty('sentinel');
-    expect(pkg.scripts.start).toContain('server.ts');
+  test('README tells the user to run the sentinel binary, not npm', () => {
+    const r = files['README.md']!;
+    expect(r).toContain('sentinel start');
+    expect(r).not.toContain('npm install');
   });
 
-  test('server.ts assembles a sidecar with a custom pack + connector via the public API', () => {
-    const s = files['src/server.ts']!;
-    expect(s).toContain("from 'sentinel'");
-    expect(s).toContain('buildServer');
-    expect(s).toContain('PolicyRegistry');
-    expect(s).toContain('./my-pack.js');
+  test('custom pack -> a no-op sentinel.config.mjs template (valid empty ES module)', () => {
+    expect(files['sentinel.config.mjs']).toContain('export {}');
+    expect(files['sentinel.config.mjs']).toContain('@montanalabs/sentinel');
   });
 
-  test('my-pack.ts is a valid custom pack template', () => {
-    expect(files['src/my-pack.ts']).toContain('PolicyPack');
-    expect(files['src/my-pack.ts']).toContain('build(');
-  });
-
-  test('docker-compose for the default (memory/sqlite) has the sidecar, no postgres', () => {
-    expect(files['docker-compose.yml']).toContain('sentinel:');
-    expect(files['docker-compose.yml']).toContain('4000');
+  test('docker-compose uses the published image (no local build) and has no postgres by default', () => {
+    expect(files['docker-compose.yml']).toContain('image: ghcr.io/montanalabs/sentinel');
+    expect(files['docker-compose.yml']).not.toContain('build:');
     expect(files['docker-compose.yml']).not.toContain('postgres');
   });
 
