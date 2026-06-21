@@ -7,6 +7,7 @@ import { Action } from '../core/action.js';
 import { CheckTier, type Check } from '../checks/types.js';
 import { CheckOutcome, Verdict, type GuardRequest } from '../core/types.js';
 import type { ProvenanceStore, ProvenanceFilter } from '../store/types.js';
+import { DuplicateRecordError } from '../store/errors.js';
 
 const allow: Check = { name: 'a', tier: CheckTier.Fast, run: async () => ({ check: 'a', outcome: CheckOutcome.Pass, verdict: Verdict.Allow }) };
 const req = (n: number): GuardRequest => ({
@@ -41,7 +42,7 @@ class FlakyStore implements ProvenanceStore {
         record.ts,
       );
       await this.inner.append(phantom);
-      throw new Error('duplicate record id or seq');
+      throw new DuplicateRecordError(record.id); // real stores throw the typed conflict error
     }
     return this.inner.append(record);
   }

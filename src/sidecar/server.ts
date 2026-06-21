@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyError, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { Engine } from '../engine/engine.js';
 import type { ProvenanceStore, ProvenanceFilter } from '../store/types.js';
@@ -55,6 +55,16 @@ function parseCount(value: unknown): number | undefined {
   if (typeof value !== 'string') return undefined;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : undefined;
+}
+
+/**
+ * Send a uniform error response: `{ error: <message> }` (plus `details` when given).
+ *
+ * The single place the error body shape is defined, so every route stays consistent and the
+ * format can't drift. Messages are short, lowercase, and must never carry internal/stack detail.
+ */
+function httpError(reply: FastifyReply, status: number, message: string, details?: unknown): FastifyReply {
+  return reply.code(status).send(details !== undefined ? { error: message, details } : { error: message });
 }
 
 /**
@@ -150,9 +160,9 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
   if (bucket || sem) {
     app.addHook('onRequest', async (req, reply) => {
       if (!req.url.startsWith('/v1/')) return;
-      if (bucket && !bucket.tryRemove()) return reply.code(429).send({ error: 'rate limit exceeded' });
+      if (bucket && !bucket.tryRemove()) return httpError(reply, 429, 'rate limit exceeded');
       if (sem) {
-        if (!sem.tryAcquire()) return reply.code(503).send({ error: 'overloaded; retry later' });
+        if (!sem.tryAcquire()) return httpError(reply, 503, 'overloaded; retry later');
         held.add(req);
       }
     });
@@ -231,17 +241,17 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
 
   app.post('/v1/guard', async (req, reply) => {
     const parsed = GuardBody.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'invalid guard request', details: parsed.error.issues });
+    if (!parsed.success) return httpError(reply, 400, 'invalid guard request', parsed.error.issues);
     return reply.send(await runOne(parsed.data));
   });
 
   app.post('/v1/guard/batch', async (req, reply) => {
     const parsed = z.object({ requests: z.array(GuardBody).max(256) }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'invalid batch request', details: parsed.error.issues });
+    if (!parsed.success) return httpError(reply, 400, 'invalid batch request', parsed.error.issues);
     // Charge the rate limiter for EVERY sub-request (the onRequest hook only spent one for the HTTP
     // call), so a single token can't buy up to 256 guard evaluations + appends.
     if (bucket && !bucket.tryRemoveN(parsed.data.requests.length - 1)) {
-      return reply.code(429).send({ error: 'rate limit exceeded (batch)' });
+      return httpError(reply, 429, 'rate limit exceeded (batch)');
     }
     const decisions = [];
     for (const request of parsed.data.requests) decisions.push(await runOne(request));
@@ -255,7 +265,7 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
   app.get('/v1/records/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const rec = await deps.store.getById(id);
-    if (!rec) return reply.code(404).send({ error: 'record not found' });
+    if (!rec) return httpError(reply, 404, 'record not found');
     return rec;
   });
 
@@ -288,15 +298,17 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
   app.post('/v1/escalations/:id/resolve', async (req, reply) => {
     const { id } = req.params as { id: string };
     const parsed = ResolveBody.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'invalid resolve request' });
+    if (!parsed.success) return httpError(reply, 400, 'invalid resolve request', parsed.error.issues);
     const existing = deps.escalations.get(id);
-    if (!existing) return reply.code(404).send({ error: 'escalation not found' });
+    if (!existing) return httpError(reply, 404, 'escalation not found');
 
     let escalation;
     try {
       escalation = await deps.escalations.resolve(id, parsed.data);
-    } catch (err) {
-      return reply.code(409).send({ error: (err as Error).message });
+    } catch {
+      // `existing` was already checked above, so the only reachable failure is an already-resolved
+      // escalation. Use a curated message rather than forwarding the raw thrown text.
+      return httpError(reply, 409, 'escalation already resolved');
     }
 
     // Append a human-decision provenance record, chained after the original. Routed through the

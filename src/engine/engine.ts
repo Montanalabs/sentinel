@@ -15,6 +15,7 @@ import type { CheckResult, GuardDecision, GuardRequest, AgentContext } from '../
 import { CheckTier, type Check } from '../checks/types.js';
 import { RecordBuilder, GENESIS, type RecordContext, type RecordInput, type ProvenanceRecord } from '../provenance/record.js';
 import type { ProvenanceStore } from '../store/types.js';
+import { DuplicateRecordError, NonMonotonicSeqError } from '../store/errors.js';
 
 /**
  * Construction-time dependencies and tuning knobs for an {@link Engine}.
@@ -43,7 +44,10 @@ export interface EngineOptions {
 }
 
 function isAppendConflict(err: unknown): boolean {
-  return /duplicate|non-monotonic|23505/i.test((err as Error)?.message ?? '');
+  // A conflict means another writer advanced the chain (duplicate id/seq or a now-stale seq) — both
+  // are recoverable by resyncing to tail and retrying. Match the typed store errors, not a message
+  // regex, so detection can't silently break if an error's wording changes.
+  return err instanceof DuplicateRecordError || err instanceof NonMonotonicSeqError;
 }
 
 const RANK: Record<Verdict, number> = { [Verdict.Allow]: 0, [Verdict.Escalate]: 1, [Verdict.Block]: 2 };
