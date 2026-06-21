@@ -12,6 +12,7 @@ import { TokenBucket } from './token-bucket.js';
 import { Semaphore } from './semaphore.js';
 import { createAnalyticsAccumulator } from '../analytics/index.js';
 import { DASHBOARD_HTML } from './dashboard.js';
+import { registerProtocolRoutes, type ProtocolDeps } from './protocol-routes.js';
 
 /**
  * HTTP surface of the Sentinel sidecar. Defines the Fastify app that exposes the
@@ -41,6 +42,8 @@ export interface SidecarDeps {
   readonly maxBodyBytes?: number;
   /** Extra signer keyIds `/v1/verify` should also trust (key rotation) beyond the current signer. */
   readonly additionalTrustedKeyIds?: readonly string[];
+  /** When present, registers the adjudication-protocol routes (`/v1/adjudications`, etc.). */
+  readonly protocol?: ProtocolDeps;
 }
 
 /** Default request body cap (256 KiB) — legitimate actions are tiny; this blunts memory-amplification DoS. */
@@ -335,6 +338,9 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
 
     return reply.send({ escalation, recordId: record.id });
   });
+
+  // Adjudication-protocol routes are additive and opt-in; the core gate API above is unchanged.
+  if (deps.protocol) registerProtocolRoutes(app, deps.protocol);
 
   return app;
 }

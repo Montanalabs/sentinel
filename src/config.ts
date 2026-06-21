@@ -97,6 +97,26 @@ export interface SentinelConfig {
   maxBodyBytes?: number;
   /** Previously-valid signer keyIds still trusted by `/v1/verify` (for key rotation). */
   trustedKeyIds?: string[];
+  /** Enable the adjudication-protocol routes (`/v1/adjudications`, receipt validation, audit). */
+  protocolEnabled?: boolean;
+  /** Issuer identity stamped into authorization receipts; defaults to `sentinel-gate`. */
+  protocolIssuer?: string;
+  /** Trusted executor signer keys (`keyId` → base64 raw Ed25519 public key) for execution ingest/audit. */
+  executorKeys?: { keyId: string; publicKey: string }[];
+}
+
+/** Parse `keyId:base64,keyId2:base64` into trusted-executor key entries, skipping malformed pairs. */
+function parseExecutorKeys(raw: string | undefined): { keyId: string; publicKey: string }[] {
+  if (!raw) return [];
+  const out: { keyId: string; publicKey: string }[] = [];
+  for (const pair of raw.split(',')) {
+    const sep = pair.indexOf(':');
+    if (sep <= 0) continue;
+    const keyId = pair.slice(0, sep).trim();
+    const publicKey = pair.slice(sep + 1).trim();
+    if (keyId && publicKey) out.push({ keyId, publicKey });
+  }
+  return out;
 }
 
 /** Parse a numeric env var, returning `undefined` for missing/blank/non-finite (so defaults apply). */
@@ -139,6 +159,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SentinelConfig
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  const protocolEnabled = /^(1|true|yes|on)$/i.test((env.SENTINEL_PROTOCOL_ENABLED ?? '').trim());
+  const executorKeys = parseExecutorKeys(env.SENTINEL_PROTOCOL_EXECUTOR_KEYS);
   return {
     ...(env.SENTINEL_DATABASE_URL ? { databaseUrl: env.SENTINEL_DATABASE_URL } : {}),
     sidecarPort: posInt(env.SENTINEL_SIDECAR_PORT, 65535) ?? 4000,
@@ -155,5 +177,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SentinelConfig
     ...(maxConcurrent !== undefined && maxConcurrent >= 0 ? { maxConcurrent } : {}),
     ...(maxBodyBytes !== undefined ? { maxBodyBytes } : {}),
     ...(trustedKeyIds.length ? { trustedKeyIds } : {}),
+    ...(protocolEnabled ? { protocolEnabled } : {}),
+    ...(env.SENTINEL_PROTOCOL_ISSUER ? { protocolIssuer: env.SENTINEL_PROTOCOL_ISSUER } : {}),
+    ...(executorKeys.length ? { executorKeys } : {}),
   };
 }

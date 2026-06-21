@@ -6,6 +6,12 @@ import type { ProvenanceStore } from '../store/types.js';
 import { Engine } from '../engine/engine.js';
 import { EscalationManager, type Escalation } from './escalation.js';
 import { buildServer } from './server.js';
+import type { ProtocolDeps } from './protocol-routes.js';
+import { ReceiptIssuer } from '../protocol/receipt-issuer.js';
+import { ReceiptValidator } from '../protocol/receipt-validator.js';
+import { Adjudicator } from '../protocol/adjudicator.js';
+import { InMemoryRevocationStore } from '../protocol/revocation-store.js';
+import { openProtocolStores, type ProtocolStores } from '../store/open-protocol-stores.js';
 import { defaultRegistry, type DefaultPacksConfig, type PolicyPack } from '../policy-packs/index.js';
 import { makeProvider, type ProviderConfig } from '../providers/index.js';
 import type { LedgerConnector, ClinicalConnector } from '../connectors/types.js';
@@ -50,6 +56,8 @@ export interface BuiltSentinel {
   readonly engine: Engine;
   readonly escalations: EscalationManager;
   readonly signer: Signer;
+  /** Wired adjudication-protocol collaborators when `protocolEnabled`; absent otherwise. */
+  readonly protocol?: ProtocolDeps;
   close(): Promise<void>;
 }
 
@@ -140,6 +148,33 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
   // Real model second-opinions take several seconds; give the slow tier headroom.
   const slowBudgetMs = config.slowBudgetMs ?? (config.secondOpinionProvider === 'mock' ? 5_000 : 12_000);
   const engine = new Engine({ resolve: (id) => registry.resolve(id), builder, store, slowBudgetMs });
+
+  // Adjudication protocol (opt-in): wire the issuer, validator, adjudicator, and persistence trio.
+  let protocolStores: ProtocolStores | undefined;
+  let protocol: ProtocolDeps | undefined;
+  if (config.protocolEnabled) {
+    protocolStores = await openProtocolStores(config.databaseUrl);
+    const issuer = new ReceiptIssuer(signer, { issuer: config.protocolIssuer ?? 'sentinel-gate' });
+    const revocations = new InMemoryRevocationStore();
+    // The gate signs receipts with the same key it signs provenance with, so the validator/audit
+    // pin to that one issuer key. Executor keys are configured separately (the gate is not the executor).
+    const trustedAuthKeys = new Map<string, Buffer>([[signer.keyId, signer.publicKeyRaw]]);
+    const trustedExecKeys = new Map<string, Buffer>(
+      (config.executorKeys ?? []).map((k) => [k.keyId, Buffer.from(k.publicKey, 'base64')] as const),
+    );
+    const validator = new ReceiptValidator({ trustedKeys: trustedAuthKeys, nonceStore: protocolStores.nonces, revocations });
+    const adjudicator = new Adjudicator({ engine, issuer });
+    protocol = {
+      adjudicator,
+      validator,
+      receipts: protocolStores.receipts,
+      executions: protocolStores.executions,
+      revocations,
+      trustedAuthKeys,
+      trustedExecKeys,
+    };
+  }
+
   const app = buildServer({
     engine,
     store,
@@ -149,6 +184,7 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
     ...(config.maxConcurrent !== undefined ? { maxConcurrent: config.maxConcurrent } : {}),
     ...(config.maxBodyBytes !== undefined ? { maxBodyBytes: config.maxBodyBytes } : {}),
     ...(config.trustedKeyIds ? { additionalTrustedKeyIds: config.trustedKeyIds } : {}),
+    ...(protocol ? { protocol } : {}),
   });
 
   return {
@@ -157,9 +193,13 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
     engine,
     escalations,
     signer,
+    ...(protocol ? { protocol } : {}),
     async close() {
       await app.close();
       await store.close();
+      if (protocolStores) {
+        await Promise.all([protocolStores.nonces.close(), protocolStores.receipts.close(), protocolStores.executions.close()]);
+      }
     },
   };
 }
