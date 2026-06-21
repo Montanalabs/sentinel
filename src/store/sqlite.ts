@@ -12,41 +12,7 @@ import type { DatabaseSync as Db, SQLInputValue } from 'node:sqlite';
 import type { ProvenanceRecord } from '../provenance/record.js';
 import type { ProvenanceFilter, ProvenanceStore } from './types.js';
 import { DuplicateRecordError, NonMonotonicSeqError } from './errors.js';
-
-// Load node:sqlite on demand, silencing its one-time "experimental" notice. Type
-// is imported `type`-only above, so non-SQLite users never load node:sqlite.
-/**
- * Dynamically import `node:sqlite`, suppressing its one-time experimental
- * warning.
- *
- * Loading is deferred so processes that never use the SQLite backend don't pull
- * in the module or emit its notice.
- *
- * @returns The `node:sqlite` module namespace.
- * @throws {Error} Propagated from the dynamic import if `node:sqlite` is
- *   unavailable (e.g. an older Node runtime).
- */
-let sqliteModule: Promise<typeof import('node:sqlite')> | undefined;
-
-async function loadSqlite(): Promise<typeof import('node:sqlite')> {
-  // Memoize so the global `process.emitWarning` swap happens exactly once, even under concurrent
-  // SqliteStore.open() calls — otherwise interleaved patch/restore could leak or drop warnings.
-  if (sqliteModule) return sqliteModule;
-  sqliteModule = (async () => {
-    const orig = process.emitWarning;
-    process.emitWarning = function (warning: string | Error, ...args: unknown[]) {
-      const msg = typeof warning === 'string' ? warning : (warning?.message ?? '');
-      if (msg.includes('SQLite is an experimental')) return;
-      return (orig as (w: string | Error, ...a: unknown[]) => void).call(process, warning, ...args);
-    } as typeof process.emitWarning;
-    try {
-      return await import('node:sqlite');
-    } finally {
-      process.emitWarning = orig;
-    }
-  })();
-  return sqliteModule;
-}
+import { loadSqlite } from './sqlite-loader.js';
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS provenance_records (
