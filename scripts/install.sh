@@ -40,7 +40,7 @@ else
   url="https://github.com/${REPO}/releases/download/${VERSION}/${asset}"
 fi
 
-printf '%sInstalling sentinel%s (%s) for %s-%s...\n' "$bold" "$reset" "$VERSION" "$os" "$arch"
+printf '\n%sInstalling Sentinel%s for %s-%s\n\n' "$bold" "$reset" "$os" "$arch"
 mkdir -p "$INSTALL_DIR"
 tmp="$(mktemp)"
 if ! curl -fSL --progress-bar "$url" -o "$tmp"; then
@@ -49,9 +49,14 @@ fi
 chmod +x "$tmp"
 mv "$tmp" "$INSTALL_DIR/sentinel"
 
-printf '\n%s✓ Installed%s to %s/sentinel\n' "$green$bold" "$reset" "$INSTALL_DIR"
+# Ask the freshly-installed binary its version, so the success line shows the real version.
+ver="$("$INSTALL_DIR/sentinel" --version 2>/dev/null || true)"
+printf '\n%s✓ Installed%s Sentinel%s → %s/sentinel\n' "$green$bold" "$reset" "${ver:+ v$ver}" "$INSTALL_DIR"
 case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
-  *) printf '\n%sAdd it to your PATH:%s\n  export PATH="%s:$PATH"\n' "$dim" "$reset" "$INSTALL_DIR" ;;
+  *) printf '\n%sAdd to your PATH:%s  export PATH="%s:$PATH"\n' "$dim" "$reset" "$INSTALL_DIR" ;;
 esac
-printf '\nRun:  %ssentinel --help%s\n' "$bold" "$reset"
+printf '\n%sGet started:%s\n' "$bold" "$reset"
+printf '  %ssentinel init%s    scaffold a gate\n' "$bold" "$reset"
+printf '  %ssentinel --help%s  all commands\n' "$bold" "$reset"
+printf '\n%sDocs: https://github.com/montanalabs/sentinel%s\n' "$dim" "$reset"
