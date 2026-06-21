@@ -40,6 +40,34 @@ When an agent is about to do something irreversible — move money, write a reco
 
 Aggregation precedence: **BLOCK > ESCALATE > ALLOW**. A fast BLOCK short-circuits the slow tier (no wasted model spend).
 
+## Install the CLI
+
+The `sentinel` CLI scaffolds, runs, and verifies a gate (`sentinel init` / `start` / `keygen` / `verify`).
+The native install is a **standalone binary — no Node.js required.**
+
+**macOS, Linux, WSL:**
+
+```bash
+curl -fsSL https://montanalabs.ai/sentinel/install.sh | bash
+```
+
+**Windows PowerShell:**
+
+```powershell
+irm https://montanalabs.ai/sentinel/install.ps1 | iex
+```
+
+**Windows CMD:**
+
+```bat
+curl -fsSL https://montanalabs.ai/sentinel/install.cmd -o install.cmd && install.cmd
+```
+
+**Package managers** — Homebrew (macOS/Linux): `brew install montanalabs/tap/sentinel` ·
+WinGet (Windows): `winget install MontanaLabs.Sentinel`
+
+Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run the sidecar.
+
 ## Documentation
 
 - **[Self-hosting Sentinel](./docs/self-hosting.md)** — run the sidecar in your own environment

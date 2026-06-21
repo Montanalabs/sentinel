@@ -12,3 +12,6 @@ coverage/
 
 # local agent tooling (skills, runtime state)
 .claude/
+
+# standalone binary build output
+build/

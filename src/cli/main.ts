@@ -138,37 +138,46 @@ async function verify(url: string | undefined): Promise<void> {
   process.exit(body.ok ? 0 : 1);
 }
 
-const args = process.argv.slice(2);
-const cmd = args[0];
-const positional = args.slice(1).filter((a) => !a.startsWith('-'));
-const yesFlag = args.includes('--yes') || args.includes('-y');
+/** Parse argv and dispatch the command. Wrapped (not top-level await) so the CLI bundles into a
+ * single executable for the standalone binary build. */
+async function run(): Promise<void> {
+  const args = process.argv.slice(2);
+  const cmd = args[0];
+  const positional = args.slice(1).filter((a) => !a.startsWith('-'));
+  const yesFlag = args.includes('--yes') || args.includes('-y');
 
-switch (cmd) {
-  case 'init':
-    await init(positional[0], Boolean(stdin.isTTY) && !yesFlag);
-    break;
-  case 'keygen':
-    stdout.write(generateSigningSeed() + '\n');
-    break;
-  case 'start':
-    await import('../sidecar/main.js'); // boots the sidecar from env
-    break;
-  case 'verify':
-    await verify(positional[0]);
-    break;
-  case 'version':
-  case '--version':
-  case '-v':
-    stdout.write(VERSION + '\n');
-    break;
-  case undefined:
-  case 'help':
-  case '--help':
-  case '-h':
-    help();
-    break;
-  default:
-    process.stderr.write(`unknown command: ${cmd}\n\n`);
-    help();
-    process.exit(1);
+  switch (cmd) {
+    case 'init':
+      await init(positional[0], Boolean(stdin.isTTY) && !yesFlag);
+      break;
+    case 'keygen':
+      stdout.write(generateSigningSeed() + '\n');
+      break;
+    case 'start':
+      await import('../sidecar/main.js'); // boots the sidecar from env
+      break;
+    case 'verify':
+      await verify(positional[0]);
+      break;
+    case 'version':
+    case '--version':
+    case '-v':
+      stdout.write(VERSION + '\n');
+      break;
+    case undefined:
+    case 'help':
+    case '--help':
+    case '-h':
+      help();
+      break;
+    default:
+      process.stderr.write(`unknown command: ${cmd}\n\n`);
+      help();
+      process.exit(1);
+  }
 }
+
+run().catch((err) => {
+  process.stderr.write(`sentinel: ${(err as Error).message}\n`);
+  process.exit(1);
+});
