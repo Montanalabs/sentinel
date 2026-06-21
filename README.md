@@ -80,7 +80,7 @@ Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run 
 
 ```bash
 git clone <repo> && cd sentinel
-docker compose up --build            # → http://localhost:4000/dashboard
+docker compose up --build            # gate API on http://localhost:4000
 ```
 
 No API keys needed (defaults to the `mock` second-opinion provider). Add a `.env` with real keys to use Anthropic/OpenAI.
@@ -90,7 +90,7 @@ No API keys needed (defaults to the `mock` second-opinion provider). Add a `.env
 ```bash
 git clone <repo> && cd sentinel
 npm install
-npm run sidecar                      # → http://localhost:4000/dashboard  (in-memory store, mock provider)
+npm run sidecar                      # gate API on http://localhost:4000  (in-memory store, mock provider)
 ```
 
 Then send your first gated action — see **[docs/getting-started.md](./docs/getting-started.md)**.
@@ -111,7 +111,7 @@ npx sentinel init my-gate     # scaffold a customized self-host project
 npm run sidecar               # listens on SENTINEL_SIDECAR_PORT (default 4000)
 ```
 
-Open **`http://localhost:4000/dashboard`** for the console: live decision feed, chain-verify badge, decision analytics (allow/block/escalate rates), and a human review queue to approve/deny escalations (each resolution appends a signed `human.review` record). It's a zero-build, same-origin UI served by the sidecar over the `/v1` API.
+Drive it over the HTTP API: `POST /v1/guard` to gate an action, `GET /v1/records` for the signed decision log, `GET /v1/verify` to check the chain, `GET /v1/analytics` for allow/block/escalate rates, and the `/v1/escalations` endpoints to review and resolve holds (each resolution appends a signed `human.review` record).
 
 ### Use the SDK from an agent
 
@@ -238,7 +238,7 @@ src/
   providers/    second-opinion: Anthropic · OpenAI · mock
   connectors/   ground-truth: static/HTTP ledger · static/FHIR clinical
   policy-packs/ registry + fintech & healthcare packs
-  sidecar/      Fastify server, dashboard, escalations, rate-limit, bootstrap, main
+  sidecar/      Fastify server, escalations, rate-limit, bootstrap, main
   cli/          the `sentinel` CLI: init · start · keygen · verify
   analytics/    analytics · run coverage · policy simulation
 examples/demo.ts

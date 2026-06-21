@@ -14,10 +14,9 @@ npm install
 SENTINEL_SECOND_OPINION_PROVIDER=mock SENTINEL_DATABASE_URL=memory npm run sidecar
 # → Sentinel sidecar listening on :4000 (signer ed25519:…, provider mock)
 ```
-Verify and open the console:
+Verify it's up:
 ```bash
 curl localhost:4000/healthz                 # {"status":"ok"}
-open http://localhost:4000/dashboard
 ```
 
 ## 2. Guard an action from TypeScript
@@ -61,8 +60,11 @@ if d.allowed:
     ...                                    # move the money
 ```
 
-## 4. See it in the dashboard
-Open **http://localhost:4000/dashboard** — every call appears in the decision feed with its verdict, the chain-verify badge stays green, and any escalations land in the review queue.
+## 4. Inspect the decisions
+```bash
+curl localhost:4000/v1/records | jq '.[].verdict'   # every gated action + its verdict
+curl localhost:4000/v1/analytics | jq               # allow/block/escalate rates
+```
 
 ## 5. Verify the audit chain
 ```bash
@@ -78,7 +80,7 @@ curl -s localhost:4000/v1/guard -H 'content-type: application/json' -d '{
   "action":{"id":"a1","type":"payment","payload":{"amount":80000,"from":"acct_ops","to":"vendor_42"}},
   "context":{"runId":"demo-1"},"policy":"fintech.payments"}' | jq '{verdict,escalationId}'
 
-# Approve it (also possible from the dashboard) — appends a signed human.review record
+# Approve it — appends a signed human.review record
 ESC=$(curl -s 'localhost:4000/v1/escalations?status=pending' | jq -r '.[0].id')
 curl -s localhost:4000/v1/escalations/$ESC/resolve -H 'content-type: application/json' \
   -d '{"decision":"approve","approver":"treasurer@acme.com"}' | jq

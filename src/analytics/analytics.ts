@@ -3,7 +3,7 @@
  *
  * Turns a batch of immutable {@link ProvenanceRecord}s into summary statistics
  * ({@link Analytics}) and per-run coverage reports ({@link RunCoverage}) for
- * dashboards and audit views. Pure and side-effect free: it reads records the
+ * reporting and audit views. Pure and side-effect free: it reads records the
  * engine already emitted and never gates actions, persists, or signs.
  */
 

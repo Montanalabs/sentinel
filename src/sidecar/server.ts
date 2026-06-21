@@ -11,16 +11,14 @@ import type { CheckResult, Action, AgentContext, GuardRequest } from '../core/ty
 import { TokenBucket } from './token-bucket.js';
 import { Semaphore } from './semaphore.js';
 import { createAnalyticsAccumulator } from '../analytics/index.js';
-import { DASHBOARD_HTML } from './dashboard.js';
 import { registerProtocolRoutes, type ProtocolDeps } from './protocol-routes.js';
 
 /**
  * HTTP surface of the Sentinel sidecar. Defines the Fastify app that exposes the
- * `/v1` gate API (guard, batch, records, verify, export, escalations), the
- * human-facing `/dashboard`, and a `/healthz` liveness probe — translating
- * requests into {@link Engine} guard calls, {@link ProvenanceStore} queries, and
- * {@link EscalationManager} operations, with optional token-bucket rate limiting
- * and semaphore backpressure on `/v1/*`.
+ * `/v1` gate API (guard, batch, records, verify, export, escalations, analytics)
+ * and a `/healthz` liveness probe — translating requests into {@link Engine} guard
+ * calls, {@link ProvenanceStore} queries, and {@link EscalationManager} operations,
+ * with optional token-bucket rate limiting and semaphore backpressure on `/v1/*`.
  */
 
 /**
@@ -185,9 +183,7 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
 
   app.get('/healthz', async () => ({ status: 'ok', keyId: undefined }));
 
-  // Human-facing dashboard (no build step) + the analytics it consumes.
-  app.get('/', async (_req, reply) => reply.redirect('/dashboard'));
-  app.get('/dashboard', async (_req, reply) => reply.type('text/html').send(DASHBOARD_HTML));
+  // Decision analytics over the provenance chain (API only; no bundled UI).
   app.get('/v1/analytics', async () => {
     // Page through the chain so analytics over a long history runs in bounded memory.
     const acc = createAnalyticsAccumulator();

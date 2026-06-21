@@ -19,7 +19,7 @@ npm run sidecar               # listens on http://localhost:4000
 Check it:
 ```bash
 curl localhost:4000/healthz                       # {"status":"ok"}
-open http://localhost:4000/dashboard              # decision feed, chain-verify, review queue
+curl localhost:4000/v1/records | jq               # the signed decision log
 ```
 
 ## Configuration (environment)
@@ -42,7 +42,6 @@ For production set `SENTINEL_SIGNING_SEED` (so the provenance signer is stable a
 | Method & path | Purpose |
 |---|---|
 | `GET /healthz` | Liveness |
-| `GET /dashboard` · `GET /` | Built-in console (feed, chain-verify, review queue) |
 | `POST /v1/guard` | Gate one action → `{ verdict, recordId, checks, reason?, escalationId? }` |
 | `POST /v1/guard/batch` | Gate a multi-agent fan-out in one linked chain |
 | `GET /v1/records[?verdict=&tenant=&runId=&since=&until=&limit=&offset=]` | Query provenance |

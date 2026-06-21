@@ -47,20 +47,3 @@ describe('GET /v1/analytics', () => {
     expect(Array.isArray(a.topReasons)).toBe(true);
   });
 });
-
-describe('dashboard UI', () => {
-  test('GET /dashboard serves an HTML page', async () => {
-    const res = await makeApp().inject({ method: 'GET', url: '/dashboard' });
-    expect(res.statusCode).toBe(200);
-    expect(res.headers['content-type']).toMatch(/text\/html/);
-    expect(res.body).toContain('Sentinel');
-    expect(res.body).toContain('Decision'); // the decision feed/section
-    expect(res.body).toContain('/v1/analytics'); // client wires to the API
-  });
-
-  test('GET / redirects to the dashboard', async () => {
-    const res = await makeApp().inject({ method: 'GET', url: '/' });
-    expect([301, 302]).toContain(res.statusCode);
-    expect(res.headers.location).toBe('/dashboard');
-  });
-});

@@ -193,7 +193,7 @@ Install the \`sentinel\` CLI (see https://github.com/montanalabs/sentinel#instal
 
 \`\`\`bash
 sentinel keygen        # paste the seed into SENTINEL_SIGNING_SEED in .env (else an ephemeral key each boot)
-sentinel start         # sidecar on :${r.port}  ·  console at http://localhost:${r.port}/dashboard
+sentinel start         # sidecar on http://localhost:${r.port}
 \`\`\`
 
 Or with Docker (pulls the official image — no CLI needed):

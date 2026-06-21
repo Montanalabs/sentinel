@@ -36,9 +36,9 @@ Run via the `sentinel` CLI or Docker. Open source / source-available — and it 
 | `src/store` | provenance store (in-memory + SQLite + Postgres) |
 | `src/provenance` | signing + hash-chain + verify |
 | `src/policy-packs` | the free starter packs (fintech, healthcare) |
-| `src/sidecar` | the HTTP server + dashboard + escalations |
+| `src/sidecar` | the HTTP server + escalations |
 | `src/cli` | the `sentinel` CLI |
-| `src/analytics` | analytics behind the dashboard — verdict rates, run coverage, policy back-testing |
+| `src/analytics` | decision analytics — verdict rates, run coverage, policy back-testing |
 
 ## What lives outside this repo
 Not the engine — the **layer above it**: the multi-tenant control plane (aggregation, dashboard, billing, SSO) and the **maintained Pro vertical compliance packs** (kept current with regulations, with audit-acceptance). Those live in the separate control-plane project, not in this open-source repo.

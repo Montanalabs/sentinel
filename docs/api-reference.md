@@ -23,9 +23,6 @@ interface ProvenanceRecord { id, ts, seq, prevHash, contentHash, keyId, signerPu
 ## `GET /healthz`
 Liveness. → `200 { "status": "ok" }`
 
-## `GET /` · `GET /dashboard`
-`/` redirects (302) to `/dashboard`, the built-in HTML console.
-
 ## `POST /v1/guard`
 Gate one action.
 **Body:** `{ action: Action, context: AgentContext, policy: string }`
@@ -75,7 +72,7 @@ Record a human decision; appends a signed `human.review` provenance record (ALLO
 ---
 
 ## Status codes
-`200` ok · `302` dashboard redirect · `400` invalid body · `404` not found · `409` already resolved · `429` rate-limited (if configured) · `503` overloaded (if `SENTINEL_MAX_CONCURRENT` exceeded).
+`200` ok · `400` invalid body · `404` not found · `409` already resolved · `429` rate-limited (if configured) · `503` overloaded (if `SENTINEL_MAX_CONCURRENT` exceeded).
 
 ## Verdict semantics
-- **ALLOW** — proceed. **BLOCK** — do not execute; `reason` explains why. **ESCALATE** — hold for human review; an `escalationId` is created and resolvable via the escalations API / dashboard.
+- **ALLOW** — proceed. **BLOCK** — do not execute; `reason` explains why. **ESCALATE** — hold for human review; an `escalationId` is created and resolvable via the escalations API.
