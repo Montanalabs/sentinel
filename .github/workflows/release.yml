@@ -44,9 +44,13 @@ jobs:
         with:
           files: build/${{ matrix.asset }}
 
-  # Build and push the Docker image (set the registry login secrets to enable).
+  # Build and push the Docker image to GHCR. Best-effort: a GHCR org-permission issue must NOT fail
+  # the release — the standalone binaries are the primary install path. To enable the push, set the
+  # org's Actions workflow permissions to "Read and write" (Org/Repo Settings -> Actions -> General),
+  # or swap GITHUB_TOKEN for a PAT secret with write:packages.
   docker:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
