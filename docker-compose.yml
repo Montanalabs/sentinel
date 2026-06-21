@@ -1,19 +1,23 @@
 # One-command local Sentinel: Postgres + the sidecar.
-#   docker compose up --build           -> http://localhost:4000/dashboard
+#   docker compose up --build           -> gate API on http://localhost:4000
 #
 # No API keys required (defaults to the `mock` second-opinion provider). To use a
 # real provider, set SENTINEL_SECOND_OPINION_PROVIDER + ANTHROPIC_API_KEY/OPENAI_API_KEY
-# in a .env file next to this one (compose reads it automatically).
+# in a .env file next to this one (compose reads it automatically). This is a LOCAL/dev
+# topology — for EC2/EKS/ECS see docs/deploying.md.
 name: sentinel
 
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: sentinel
       POSTGRES_PASSWORD: sentinel
       POSTGRES_DB: sentinel
     ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data # durable provenance + receipts across restarts
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sentinel"]
       interval: 2s
@@ -22,15 +26,29 @@ services:
 
   sentinel:
     build: .
+    restart: unless-stopped
     ports: ["4000:4000"]
     environment:
       SENTINEL_SIDECAR_PORT: "4000"
       SENTINEL_DATABASE_URL: postgres://sentinel:sentinel@postgres:5432/sentinel
+      # Enable the adjudication protocol routes (receipts/validate/executions/audit).
+      SENTINEL_PROTOCOL_ENABLED: "1"
       SENTINEL_SECOND_OPINION_PROVIDER: ${SENTINEL_SECOND_OPINION_PROVIDER:-mock}
       SENTINEL_SECOND_OPINION_MODEL: ${SENTINEL_SECOND_OPINION_MODEL:-claude-sonnet-4-6}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # For a stable, verifiable audit trail across restarts, set SENTINEL_SIGNING_SEED in .env
+      # (run `sentinel keygen`). Left empty here => an ephemeral key (dev only; warned at boot).
       SENTINEL_SIGNING_SEED: ${SENTINEL_SIGNING_SEED:-}
+    healthcheck:
+      # node:alpine has no curl/wget; use Node's global fetch against the liveness probe.
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     depends_on:
       postgres:
         condition: service_healthy
+
+volumes:
+  pgdata:

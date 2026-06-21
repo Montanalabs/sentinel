@@ -71,6 +71,7 @@ Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run 
 ## Documentation
 
 - **[Self-hosting Sentinel](./docs/self-hosting.md)** — run the sidecar in your own environment
+- **[Deploying in production](./docs/deploying.md)** — EC2, EKS/Kubernetes, ECS (with a ready k8s manifest)
 - **[Adjudication protocol](./docs/adjudication-protocol.md)** — execution-bound receipts, the flow diagram, and the threat model
 - **TypeScript SDK** (`@montanalabs/sentinel-sdk` on npm) · **Python SDK** (`sentinel-guard` on PyPI) — the thin clients your agent imports to call the gate (published as separate packages)
 

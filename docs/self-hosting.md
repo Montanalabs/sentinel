@@ -26,6 +26,7 @@ curl localhost:4000/v1/records | jq               # the signed decision log
 | Variable | Purpose | Default |
 |---|---|---|
 | `SENTINEL_SIDECAR_PORT` | Port to listen on | `4000` |
+| `SENTINEL_HOST` | Bind address. **Defaults to `127.0.0.1`** (loopback) — the `/v1/*` API is unauthenticated, so don't expose it by default. Set `0.0.0.0` to listen on all interfaces (containers do), only behind a trusted network/gateway. | `127.0.0.1` |
 | `SENTINEL_DATABASE_URL` | provenance store: `memory` (dev) · `sqlite:./sentinel.db` (durable, no server; needs Node ≥ 22.5) · `postgres://…` (durable, HA) | in-memory |
 | `SENTINEL_SECOND_OPINION_PROVIDER` | `anthropic` \| `openai` \| `mock` | `mock` |
 | `SENTINEL_SECOND_OPINION_MODEL` | Model id for the second opinion | `claude-sonnet-4-6` |
@@ -36,12 +37,13 @@ curl localhost:4000/v1/records | jq               # the signed decision log
 | `SENTINEL_RATE_LIMIT_BURST` + `SENTINEL_RATE_LIMIT_RPS` | Token-bucket rate limit on `/v1/*` (429) | off |
 | `SENTINEL_MAX_CONCURRENT` | Max in-flight `/v1/*` requests (503) | off |
 
-For production set `SENTINEL_SIGNING_SEED` (so the provenance signer is stable and verifiable across restarts) and `SENTINEL_DATABASE_URL` (so the chain is durable).
+For production set `SENTINEL_SIGNING_SEED` (stable, verifiable signer across restarts), `SENTINEL_DATABASE_URL` (durable, shared store), and — when exposing beyond loopback — `SENTINEL_HOST=0.0.0.0` behind a trusted gateway plus rate limiting. **Deploying on EC2, EKS/Kubernetes, or ECS? See [deploying.md](./deploying.md)** for step-by-step guides and a ready k8s manifest.
 
 ## HTTP API
 | Method & path | Purpose |
 |---|---|
-| `GET /healthz` | Liveness |
+| `GET /healthz` | Liveness (process up; does not touch the store) |
+| `GET /readyz` | Readiness — `503` when the provenance store is unreachable (wire to your LB/k8s readiness probe) |
 | `POST /v1/guard` | Gate one action → `{ verdict, recordId, checks, reason?, escalationId? }` |
 | `POST /v1/guard/batch` | Gate a multi-agent fan-out in one linked chain |
 | `GET /v1/records[?verdict=&tenant=&runId=&since=&until=&limit=&offset=]` | Query provenance |
@@ -102,8 +104,8 @@ npx sentinel start          # runs the gate from .env  (npx sentinel keygen, ini
 
 ### 2. Docker (stock image)
 ```bash
-docker build -t sentinel .                 # or pull the published image
-docker run -p 4000:4000 --env-file .env sentinel
+docker run -p 4000:4000 --env-file .env ghcr.io/montanalabs/sentinel:latest   # pull the published image
+# or build locally:  docker build -t sentinel . && docker run -p 4000:4000 --env-file .env sentinel
 ```
 The image's entrypoint is `sentinel start`. With Postgres via compose:
 ```yaml
@@ -146,9 +148,11 @@ Mount it into the container (`-v $PWD/sentinel.config.mjs:/app/sentinel.config.m
 `GET /v1/export` returns the signed records; push them to the separate Sentinel control-plane project (multi-tenant aggregation, analytics, signed-bundle distribution, GRC export, OTLP) or feed them into your own evidence pipeline.
 
 ## Security notes
+- **The `/v1/*` API is unauthenticated by design** — it's an internal gate, not a public endpoint. The sidecar binds **loopback by default**; only expose it (`SENTINEL_HOST=0.0.0.0`) on a private network behind an authenticating gateway / mTLS / ingress, and turn on rate limiting. See [deploying.md](./deploying.md).
 - Keep API keys in `.env` (gitignored); never in `.env.example` (tracked).
 - Defaults fail safe: the **SDK** fails *closed* (BLOCK) if the sidecar is unreachable; the **engine** *escalates* when a slow check times out or a ground-truth source is unavailable.
 - Set `SENTINEL_SIGNING_SEED` in production and store it as a secret — it is the identity that signs your audit trail.
+- The sidecar handles `SIGTERM`/`SIGINT` gracefully (drains in-flight requests before exit), so rolling restarts don't drop decisions.
 
 ## Next
 - TypeScript SDK → `@montanalabs/sentinel-sdk` (npm)
