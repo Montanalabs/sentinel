@@ -19,15 +19,22 @@ jobs:
       matrix:
         include:
           - { os: macos-14, target: darwin-arm64, asset: sentinel-darwin-arm64 }
-          - { os: macos-13, target: darwin-x64, asset: sentinel-darwin-x64 }
+          # Intel macOS is cross-built on the Apple-Silicon runner with an x64 Node under Rosetta 2,
+          # so it no longer depends on the retiring Intel `macos-13` runner (which left every release
+          # without a darwin-x64 asset).
+          - { os: macos-14, target: darwin-x64, asset: sentinel-darwin-x64, node_arch: x64 }
           - { os: ubuntu-latest, target: linux-x64, asset: sentinel-linux-x64 }
           - { os: ubuntu-24.04-arm, target: linux-arm64, asset: sentinel-linux-arm64 }
           - { os: windows-latest, target: win-x64, asset: sentinel-win-x64.exe }
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure Rosetta 2 (darwin-x64 cross-build)
+        if: matrix.node_arch == 'x64'
+        run: softwareupdate --install-rosetta --agree-to-license
       - uses: actions/setup-node@v4
         with:
           node-version: 22 # official, statically-linked build — required for Node SEA
+          architecture: ${{ matrix.node_arch || '' }} # x64 Node (via Rosetta) for the Intel build
       - run: npm ci
       - run: npm run build:binary
       # Normalize the produced binary to the release asset name.
