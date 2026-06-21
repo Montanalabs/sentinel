@@ -12,6 +12,7 @@ import { ReceiptValidator } from '../protocol/receipt-validator.js';
 import { Adjudicator } from '../protocol/adjudicator.js';
 import { InMemoryRevocationStore } from '../protocol/revocation-store.js';
 import { openProtocolStores, type ProtocolStores } from '../store/open-protocol-stores.js';
+import { warn, dim } from '../term/colors.js';
 import { defaultRegistry, type DefaultPacksConfig, type PolicyPack } from '../policy-packs/index.js';
 import { makeProvider, type ProviderConfig } from '../providers/index.js';
 import type { LedgerConnector, ClinicalConnector } from '../connectors/types.js';
@@ -112,9 +113,9 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
     // No seed → a fresh key every boot, so prior provenance signatures become unverifiable and
     // `/v1/verify` (pinned to the new key) rejects the old chain. Fine for dev; loud in prod.
     console.warn(
-      '[sentinel] WARNING: SENTINEL_SIGNING_SEED is unset — generating an EPHEMERAL signing key. ' +
-        'Provenance signed before this boot will NOT verify against it. Set a stable seed ' +
-        '(`npx sentinel keygen`) for any non-throwaway deployment.',
+      `${warn('[sentinel] WARNING: SENTINEL_SIGNING_SEED is unset — generating an EPHEMERAL signing key.')} ` +
+        dim('Provenance signed before this boot will NOT verify against it. Set a stable seed ') +
+        dim('(`sentinel keygen`) for any non-throwaway deployment.'),
     );
     signer = Signer.generate();
   }

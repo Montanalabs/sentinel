@@ -35,6 +35,9 @@ async function main() {
   // 1. Bundle the compiled CLI into a single CJS file. node: builtins stay external (the runtime
   //    provides them — including node:sqlite). Bundling produces one self-contained script.
   console.log('• bundling CLI -> ' + BUNDLE);
+  // The binary has no package.json on disk, so bake the version in at bundle time (the CLI reads
+  // process.env.SENTINEL_BUILD_VERSION first; esbuild replaces it with this literal).
+  const pkgVersion = JSON.parse(readFileSync('package.json', 'utf8')).version;
   await build({
     entryPoints: ['dist/cli/main.js'],
     bundle: true,
@@ -43,6 +46,7 @@ async function main() {
     target: 'node22',
     outfile: BUNDLE,
     legalComments: 'none',
+    define: { 'process.env.SENTINEL_BUILD_VERSION': JSON.stringify(pkgVersion) },
   });
 
   // 2. SEA blob from the bundle.

@@ -19,8 +19,8 @@ import { stdin, stdout } from 'node:process';
 import { scaffoldFiles, type ScaffoldOptions } from './scaffold.js';
 import { runWizard, type Ask } from './wizard.js';
 import { generateSigningSeed } from './keygen.js';
-
-const VERSION = '0.1.0';
+import { heroBanner, accent, dim } from './brand.js';
+import { VERSION } from './version.js';
 
 /** Print the usage banner and command list to stdout. */
 function help(): void {
@@ -85,6 +85,8 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
   let opts: ScaffoldOptions = { name: nameDefault };
   let startNow = false;
 
+  stdout.write(`\n${heroBanner({ version: `v${VERSION}` })}\n`);
+
   if (interactive) {
     const rl = createInterface({ input: stdin, output: stdout });
     const ask: Ask = async (label, prompt, def) => {
@@ -92,7 +94,7 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
       const answer = await rl.question(`${prompt} [${d}]: `);
       return answer.trim() === '' ? d : answer;
     };
-    stdout.write('\nConfigure your Sentinel gate:\n\n');
+    stdout.write(`\n${accent('Configure your gate')}\n\n`);
     opts = await runWizard(ask);
     stdout.write('\n');
     startNow = (await rl.question('Start the sidecar now? [Y/n]: ')).trim().toLowerCase() !== 'n';
@@ -117,7 +119,7 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
   } else {
     stdout.write(
       `\nDone. Next:\n  cd ${rel}\n  sentinel keygen   # optional: set SENTINEL_SIGNING_SEED in .env for a stable identity\n` +
-        `  sentinel start    # console → http://localhost:${opts.port ?? 4000}/dashboard\n`,
+        `  sentinel start    # gate on http://localhost:${opts.port ?? 4000}\n`,
     );
   }
 }
@@ -158,6 +160,7 @@ async function run(): Promise<void> {
       stdout.write(generateSigningSeed() + '\n');
       break;
     case 'start':
+      stdout.write(`\n${heroBanner({ version: `v${VERSION}` })}\n\n${dim('Starting the sidecar…')}\n`);
       await import('../sidecar/main.js'); // boots the sidecar from env
       break;
     case 'verify':

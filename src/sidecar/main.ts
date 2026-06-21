@@ -8,6 +8,7 @@ import { loadEnvFile, loadConfig } from '../config.js';
 import { buildSentinel, type BootstrapOverrides } from './bootstrap.js';
 import { loadExtensions } from './extensions.js';
 import { StaticLedgerConnector } from '../connectors/static-ledger.js';
+import { accent, bold, dim, success, danger } from '../term/colors.js';
 
 /**
  * Sidecar entrypoint. Loads .env, optionally a `sentinel.config.{mjs,js}` for
@@ -43,11 +44,14 @@ async function main(): Promise<void> {
   await app.listen({ port: config.sidecarPort, host: '0.0.0.0' });
   const extra = ext.packs?.length ? `, +${ext.packs.length} custom pack(s)` : '';
   // eslint-disable-next-line no-console
-  console.log(`Sentinel sidecar listening on :${config.sidecarPort} (signer ${signer.keyId}, provider ${config.secondOpinionProvider}${extra})`);
+  console.log(
+    `${success('✓')} ${bold('Sentinel')} sidecar listening on ${accent(`http://localhost:${config.sidecarPort}`)} ` +
+      dim(`(signer ${signer.keyId}, provider ${config.secondOpinionProvider}${extra})`),
+  );
 }
 
 main().catch((err) => {
   // eslint-disable-next-line no-console
-  console.error('Sentinel sidecar failed to start:', err);
+  console.error(danger('Sentinel sidecar failed to start:'), err);
   process.exit(1);
 });
