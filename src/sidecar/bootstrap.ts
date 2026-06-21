@@ -73,6 +73,11 @@ export interface BootstrapOverrides {
   readonly packs?: DefaultPacksConfig;
   /** Custom packs to register alongside the built-ins. */
   readonly extraPacks?: readonly PolicyPack[];
+  /**
+   * Reuse a specific signer instead of deriving one from `config.signingSeed`. Used by watch mode to
+   * keep one stable signing identity across config reloads, so the provenance chain stays continuous.
+   */
+  readonly signer?: Signer;
 }
 
 function webhookNotifier(url: string): (escalation: Escalation) => Promise<void> {
@@ -107,7 +112,9 @@ function webhookNotifier(url: string): (escalation: Escalation) => Promise<void>
 export async function buildSentinel(config: SentinelConfig, overrides: BootstrapOverrides = {}): Promise<BuiltSentinel> {
   const store = await openStore(config.databaseUrl);
   let signer: Signer;
-  if (config.signingSeed) {
+  if (overrides.signer) {
+    signer = overrides.signer; // watch mode reuses one identity across reloads
+  } else if (config.signingSeed) {
     signer = Signer.fromSeed(Buffer.from(config.signingSeed, 'base64'));
   } else {
     // No seed → a fresh key every boot, so prior provenance signatures become unverifiable and
