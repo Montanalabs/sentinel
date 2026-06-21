@@ -36,6 +36,7 @@ curl localhost:4000/v1/records | jq               # the signed decision log
 | `SENTINEL_ESCALATION_WEBHOOK_URL` | POSTed when an action escalates (Slack/ServiceNow) | — |
 | `SENTINEL_RATE_LIMIT_BURST` + `SENTINEL_RATE_LIMIT_RPS` | Token-bucket rate limit on `/v1/*` (429) | off |
 | `SENTINEL_MAX_CONCURRENT` | Max in-flight `/v1/*` requests (503) | off |
+| `SENTINEL_APPEND_RETRIES` | Provenance-append retries on a cross-writer conflict (raise under heavy HA write contention) | 12 |
 
 For production set `SENTINEL_SIGNING_SEED` (stable, verifiable signer across restarts), `SENTINEL_DATABASE_URL` (durable, shared store), and — when exposing beyond loopback — `SENTINEL_HOST=0.0.0.0` behind a trusted gateway plus rate limiting. **Deploying on EC2, EKS/Kubernetes, or ECS? See [deploying.md](./deploying.md)** for step-by-step guides and a ready k8s manifest.
 

@@ -102,6 +102,8 @@ export interface SentinelConfig {
   maxConcurrent?: number;
   /** Max accepted HTTP request body size in bytes (`/v1/*`); guards against memory-amplification. */
   maxBodyBytes?: number;
+  /** Provenance-append retries on a cross-writer conflict (HA: many sidecars, one Postgres). Default 12. */
+  appendRetries?: number;
   /** Previously-valid signer keyIds still trusted by `/v1/verify` (for key rotation). */
   trustedKeyIds?: string[];
   /** Enable the adjudication-protocol routes (`/v1/adjudications`, receipt validation, audit). */
@@ -162,6 +164,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SentinelConfig
   const rps = posInt(env.SENTINEL_RATE_LIMIT_RPS);
   const maxConcurrent = num(env.SENTINEL_MAX_CONCURRENT); // 0 allowed = explicitly disable backpressure
   const maxBodyBytes = posInt(env.SENTINEL_MAX_BODY_BYTES);
+  const appendRetries = posInt(env.SENTINEL_APPEND_RETRIES);
   const trustedKeyIds = (env.SENTINEL_TRUSTED_KEY_IDS ?? '')
     .split(',')
     .map((s) => s.trim())
@@ -184,6 +187,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SentinelConfig
     ...(burst !== undefined && rps !== undefined ? { rateLimit: { capacity: burst, refillPerSec: rps } } : {}),
     ...(maxConcurrent !== undefined && maxConcurrent >= 0 ? { maxConcurrent } : {}),
     ...(maxBodyBytes !== undefined ? { maxBodyBytes } : {}),
+    ...(appendRetries !== undefined ? { appendRetries } : {}),
     ...(trustedKeyIds.length ? { trustedKeyIds } : {}),
     ...(protocolEnabled ? { protocolEnabled } : {}),
     ...(env.SENTINEL_PROTOCOL_ISSUER ? { protocolIssuer: env.SENTINEL_PROTOCOL_ISSUER } : {}),

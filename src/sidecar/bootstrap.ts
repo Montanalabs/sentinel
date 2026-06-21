@@ -154,7 +154,11 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
   );
   // Real model second-opinions take several seconds; give the slow tier headroom.
   const slowBudgetMs = config.slowBudgetMs ?? (config.secondOpinionProvider === 'mock' ? 5_000 : 12_000);
-  const engine = new Engine({ resolve: (id) => registry.resolve(id), builder, store, slowBudgetMs });
+  // Default the HA append-retry budget well above the Engine's library default (3): a production
+  // sidecar shares one Postgres with its replicas, so cross-writer append conflicts are normal and
+  // should be absorbed by retry rather than surfaced as request errors. Override via SENTINEL_APPEND_RETRIES.
+  const appendRetries = config.appendRetries ?? 12;
+  const engine = new Engine({ resolve: (id) => registry.resolve(id), builder, store, slowBudgetMs, appendRetries });
 
   // Adjudication protocol (opt-in): wire the issuer, validator, adjudicator, and persistence trio.
   let protocolStores: ProtocolStores | undefined;
