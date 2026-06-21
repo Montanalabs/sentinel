@@ -50,6 +50,23 @@ export interface PolicyPack {
 }
 
 /**
+ * Thrown by {@link PolicyRegistry.resolve} when no pack is registered under the requested id.
+ *
+ * Carries an HTTP `statusCode` of 400 so the sidecar surfaces an unknown policy as a clean
+ * client error (the caller asked for a policy that does not exist) rather than an opaque 500.
+ * It still extends {@link Error}, so the programmatic `resolve` contract ("throws on unknown id")
+ * is unchanged — fail-closed: no checks run, so no decision can be ALLOWed.
+ */
+export class UnknownPolicyError extends Error {
+  /** HTTP status the sidecar's error handler maps this to (4xx => client error, not a 500). */
+  readonly statusCode = 400;
+  constructor(id: string) {
+    super(`unknown policy pack: ${id}`);
+    this.name = 'UnknownPolicyError';
+  }
+}
+
+/**
  * Resolves a policy reference to the ordered {@link Check}s the engine should run.
  *
  * Packs are registered once (typically at startup) and resolved per gated action. The same
@@ -100,11 +117,11 @@ export class PolicyRegistry {
    *
    * @param id - Policy reference to resolve (e.g. `fintech.payments`).
    * @returns The ordered {@link Check}s from the matching {@link PolicyPack}.
-   * @throws {Error} If no pack is registered under `id`.
+   * @throws {UnknownPolicyError} If no pack is registered under `id` (HTTP 400 at the sidecar).
    */
   resolve(id: string): Check[] {
     const pack = this.packs.get(id);
-    if (!pack) throw new Error(`unknown policy pack: ${id}`);
+    if (!pack) throw new UnknownPolicyError(id);
     return pack.build(this.deps);
   }
 }

@@ -4,6 +4,16 @@ All notable changes to Sentinel are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-06-21
+
+Robustness fix found by a 1,000-scenario end-to-end audit of the live gate.
+
+- **An unknown (or empty) policy id now fails closed with HTTP `400` instead of `500`.**
+  `PolicyRegistry.resolve` throws a typed `UnknownPolicyError` (statusCode 400), which the sidecar
+  surfaces as `{"error":"unknown policy pack: <id>"}`. Previously an unregistered policy raised an
+  unhandled exception → opaque `500 internal error`. It was already fail-*closed* (no decision could
+  be ALLOWed), but is now a clean, actionable client error. Regression-tested.
+
 ## [1.0.1] - 2026-06-21
 
 `sentinel init` onboarding fixes — no API surface change.

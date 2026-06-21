@@ -7,6 +7,7 @@ import { InMemoryStore } from '../store/memory.js';
 import { RecordBuilder, verifyChain } from '../provenance/record.js';
 import { Signer } from '../provenance/signing.js';
 import { PolicyCheck, RuleEffect, type PolicyDefinition } from '../checks/policy.js';
+import { UnknownPolicyError } from '../policy-packs/registry.js';
 import { CompareOp } from '../checks/condition.js';
 import { Action } from '../core/action.js';
 
@@ -88,6 +89,29 @@ describe('sidecar HTTP server', () => {
   test('rejects an invalid guard body with 400', async () => {
     const res = await app.inject({ method: 'POST', url: '/v1/guard', payload: { context: { runId: 'x' }, policy: 'p' } });
     expect(res.statusCode).toBe(400);
+  });
+
+  test('an unknown policy fails closed with 400 (not a 500), surfacing the reason', async () => {
+    const store = new InMemoryStore();
+    const builder = new RecordBuilder(Signer.fromSeed(Buffer.alloc(32, 43)));
+    // Resolve like the real registry: throw UnknownPolicyError for an unregistered id.
+    const engine = new Engine({
+      resolve: (id) => {
+        if (id !== 'fintech.payments') throw new UnknownPolicyError(id);
+        return [new PolicyCheck(policy)];
+      },
+      builder,
+      store,
+    });
+    const unknownApp = buildServer({ engine, store, escalations: new EscalationManager(), builder });
+    const res = await unknownApp.inject({
+      method: 'POST',
+      url: '/v1/guard',
+      payload: { action: Action.payment({ amount: 100, from: 'a', to: 'b' }), context: { runId: 'r' }, policy: 'does.not.exist' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).not.toBe(500);
+    expect(res.json().error).toContain('unknown policy pack: does.not.exist');
   });
 
   test('GET /v1/records returns appended records and filters', async () => {
