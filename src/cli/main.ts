@@ -111,8 +111,9 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
   writeScaffold(target, opts);
 
   if (startNow) {
-    stdout.write('\nStarting the sidecar (Ctrl+C to stop)…\n');
-    const res = spawnSync('sentinel', ['start'], { cwd: target, stdio: 'inherit' });
+    // --watch so edits to .env (e.g. adding your API key) are picked up live during onboarding.
+    stdout.write('\nStarting the sidecar (Ctrl+C to stop) — edits to .env reload automatically…\n');
+    const res = spawnSync('sentinel', ['start', '--watch'], { cwd: target, stdio: 'inherit' });
     if (res.error) {
       stdout.write(`\nCould not run 'sentinel start' (${res.error.message}).\n  cd ${rel} && sentinel start\n`);
     }

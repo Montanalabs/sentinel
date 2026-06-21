@@ -11,6 +11,7 @@
 
 import { ProviderKind, PackId, StoreKind, type ScaffoldOptions } from './scaffold.js';
 import { generateSigningSeed } from './keygen.js';
+import { success, warn, dim } from '../term/colors.js';
 
 /**
  * Pluggable prompt function: ask one question and resolve to the operator's answer.
@@ -38,14 +39,27 @@ const PROVIDERS: readonly string[] = [ProviderKind.Mock, ProviderKind.Anthropic,
  * piped run can never hang.
  */
 async function askProvider(ask: Ask): Promise<ProviderKind> {
+  const prompt = 'Second-opinion provider (mock/anthropic/openai) — mock runs offline; the others need an API key';
   for (let attempt = 0; attempt < 3; attempt++) {
-    const raw = (await ask('provider', 'Second-opinion provider (mock/anthropic/openai)', ProviderKind.Mock)).trim().toLowerCase();
+    const raw = (await ask('provider', prompt, ProviderKind.Mock)).trim().toLowerCase();
     if (raw === '') return ProviderKind.Mock;
     if (PROVIDERS.includes(raw)) return raw as ProviderKind;
     // Only nag on a real terminal, so tests/pipes stay quiet.
     if (process.stdout.isTTY) process.stderr.write(`  "${raw}" is not a known provider — choose mock, anthropic, or openai\n`);
   }
   return ProviderKind.Mock;
+}
+
+/** Tell the operator whether the chosen provider's API key is already in the environment (TTY only). */
+function noteProviderKey(provider: ProviderKind): void {
+  if (!process.stdout.isTTY) return;
+  const envVar = provider === ProviderKind.Anthropic ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
+  if (process.env[envVar]) {
+    process.stdout.write(`  ${success(`✓ ${envVar} detected`)} ${dim('— it will be used.')}\n`);
+  } else {
+    const where = provider === ProviderKind.Anthropic ? 'https://console.anthropic.com' : 'https://platform.openai.com/api-keys';
+    process.stdout.write(`  ${warn(`${envVar} is not set`)} ${dim(`— add it to the generated .env before starting (key from ${where}).`)}\n`);
+  }
 }
 
 function parsePacks(v: string): PackId[] {
@@ -83,6 +97,7 @@ export async function runWizard(ask: Ask): Promise<ScaffoldOptions> {
   // Fall back to 4000 on a non-integer / out-of-range port so generated compose/README are valid.
   const port = Number.isInteger(portRaw) && portRaw > 0 && portRaw <= 65535 ? portRaw : 4000;
   const provider = await askProvider(ask);
+  if (provider !== ProviderKind.Mock) noteProviderKey(provider);
   const model =
     provider === ProviderKind.Mock
       ? undefined
