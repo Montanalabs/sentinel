@@ -30,9 +30,10 @@ export class PostgresNonceStore implements NonceStore {
    * @returns A ready store.
    * @throws Propagated from the driver if the connection or DDL fails.
    */
-  static async connect(url: string): Promise<PostgresNonceStore> {
+  static async connect(url: string, opts: { reset?: boolean } = {}): Promise<PostgresNonceStore> {
     const pool = new pg.Pool({ connectionString: url });
     await pool.query(DDL);
+    if (opts.reset) await pool.query('TRUNCATE receipt_nonces');
     return new PostgresNonceStore(pool);
   }
 

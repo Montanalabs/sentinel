@@ -1,12 +1,11 @@
 /**
  * URL-keyed factory for the protocol's persistence trio: nonce, receipt, and execution stores.
  *
- * Resolves the same deployment store URL the provenance {@link openStore} uses to the matching
- * backend for the three protocol stores, so one configuration point drives all persistence. SQLite
- * uses the same database file as the provenance chain (separate tables); the in-memory backend is
- * used for dev/test. Postgres-backed protocol stores are not yet implemented — a `postgres://` URL
- * falls back to **non-durable in-memory** protocol stores with a loud warning, so enabling the
- * protocol never crashes boot but the operator is told the audit log will not survive a restart.
+ * Resolves the same deployment store URL the provenance {@link openStore} uses to the matching backend
+ * for the three protocol stores, so one configuration point drives all persistence. SQLite uses the
+ * same database file as the provenance chain (separate tables); Postgres uses durable, multi-writer
+ * tables on the same database — required for the HA topology, where every sidecar must share one nonce
+ * ledger or the single-use guarantee degrades to per-instance. The in-memory backend is dev/test only.
  */
 
 import type { NonceStore } from './nonce-store.js';
@@ -14,10 +13,13 @@ import type { ReceiptStore } from './receipt-store.js';
 import type { ExecutionReceiptStore } from './execution-store.js';
 import { InMemoryNonceStore } from './nonce-memory.js';
 import { SqliteNonceStore } from './nonce-sqlite.js';
+import { PostgresNonceStore } from './nonce-postgres.js';
 import { InMemoryReceiptStore } from './receipt-memory.js';
 import { SqliteReceiptStore } from './receipt-sqlite.js';
+import { PostgresReceiptStore } from './receipt-postgres.js';
 import { InMemoryExecutionReceiptStore } from './execution-memory.js';
 import { SqliteExecutionReceiptStore } from './execution-sqlite.js';
+import { PostgresExecutionReceiptStore } from './execution-postgres.js';
 
 /** The three persistence stores the adjudication protocol needs. */
 export interface ProtocolStores {
@@ -43,11 +45,12 @@ export async function openProtocolStores(url?: string): Promise<ProtocolStores> 
     return { nonces, receipts, executions };
   }
   if (url && (url.startsWith('postgres://') || url.startsWith('postgresql://'))) {
-    console.warn(
-      '[sentinel] WARNING: protocol persistence over Postgres is not yet implemented — using ' +
-        'NON-DURABLE in-memory receipt/execution/nonce stores. The protocol audit log will not ' +
-        'survive a restart. Use a `sqlite:` store URL for durable single-node protocol persistence.',
-    );
+    const [nonces, receipts, executions] = await Promise.all([
+      PostgresNonceStore.connect(url),
+      PostgresReceiptStore.connect(url),
+      PostgresExecutionReceiptStore.connect(url),
+    ]);
+    return { nonces, receipts, executions };
   }
   return { nonces: new InMemoryNonceStore(), receipts: new InMemoryReceiptStore(), executions: new InMemoryExecutionReceiptStore() };
 }
