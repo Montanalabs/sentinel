@@ -11,17 +11,17 @@ When an agent is about to do something irreversible — move money, write a reco
 ## Architecture
 
 ```
-            ┌──────────────── Buyer environment (VPC / on-prem) ────────────────┐
-  Agent ──► │ [Sentinel SDK] ──guard(action,context,policy)──► [Sentinel Sidecar]│
- (Claude/   │    thin shim                                       │ Verdict Engine │
-  GPT/…)    │       ▲                                            │  ├ schema      │
-            │       └──── ALLOW | BLOCK | ESCALATE ◄─────────────┤  ├ policy DSL  │
-  execute() only on ALLOW                                       │  ├ reconcile   │──► ground-truth
-            │                                                    │  ├ data-bound. │     (ledger/EHR)
-            │                          signed, hash-chained ◄────┤  └ 2nd opinion │──► Claude / GPT
-            │                          provenance record         │ [Provenance]   │     (independent)
+            ┌──────────────── Buyer environment (VPC / on-prem) ─────────────-----───┐
+  Agent ──► │ [Sentinel SDK] ──guard(action,context,policy)──► [Sentinel Sidecar].   │
+ (Claude/   │    thin shim                                       │ Verdict Engine    │
+  GPT/…)    │       ▲                                            │  ├ schema         │
+            │       └──── ALLOW | BLOCK | ESCALATE ◄─────────────┤  ├ policy DSL     │
+  execute() only on ALLOW                                        │  ├ reconcile      │──► ground-truth
+            │                                                    │  ├ data-bound.    │    (ledger/EHR)
+            │                          signed, hash-chained ◄────┤  └ 2nd opinion    │──► Claude / GPT
+            │                          provenance record         │ [Provenance]      │    (independent)
             │                   ESCALATE ─► review queue ─► Slack/ServiceNow webhook │
-            └──────────────────────────────────┬──────────────────────────────────┘
+            └──────────────────────────────────┬──────────────────---────────────────┘
                                         [Control plane] policy bundles · aggregation · GRC export → Vanta/Drata
 ```
 
@@ -29,36 +29,41 @@ When an agent is about to do something irreversible — move money, write a reco
 
 ## Checks (run as a fast sync tier + a slow async tier with a deadline)
 
-| Check | Tier | What it does |
-|---|---|---|
-| `schema` | fast | JSON-Schema validation of the action payload |
-| `policy:<id>` | fast | Declarative, sandboxed rule DSL → allow / block / require-approval |
-| `data-boundary` | fast | Blocks PII/PHI routed to a non-cleared provider/region |
-| `reconcile:<field>` | slow | Reconciles a number (e.g. amount) against a ground-truth source; **escalates** if the source is unavailable |
-| `counterparty-sanctions` | slow | Ledger-backed sanctioned-counterparty denial |
+| Check                       | Tier | What it does                                                                                                    |
+| --------------------------- | ---- | --------------------------------------------------------------------------------------------------------------- |
+| `schema`                    | fast | JSON-Schema validation of the action payload                                                                    |
+| `policy:<id>`               | fast | Declarative, sandboxed rule DSL → allow / block / require-approval                                              |
+| `data-boundary`             | fast | Blocks PII/PHI routed to a non-cleared provider/region                                                          |
+| `reconcile:<field>`         | slow | Reconciles a number (e.g. amount) against a ground-truth source; **escalates** if the source is unavailable     |
+| `counterparty-sanctions`    | slow | Ledger-backed sanctioned-counterparty denial                                                                    |
 | `second-opinion:<provider>` | slow | An **independent** model (Claude/GPT) re-checks; disagreement → ESCALATE; provider error → ESCALATE (fail-safe) |
 
 Aggregation precedence: **BLOCK > ESCALATE > ALLOW**. A fast BLOCK short-circuits the slow tier (no wasted model spend).
 
 ## Documentation
+
 - **[Self-hosting Sentinel](./docs/self-hosting.md)** — run the sidecar in your own environment
 - **TypeScript SDK** (`@montanalabs/sentinel-sdk` on npm) · **Python SDK** (`sentinel-guard` on PyPI) — the thin clients your agent imports to call the gate (published as separate packages)
 
 ## Run locally (clone → start)
 
 **Option A — Docker (with Postgres), one command:**
+
 ```bash
 git clone <repo> && cd sentinel
 docker compose up --build            # → http://localhost:4000/dashboard
 ```
+
 No API keys needed (defaults to the `mock` second-opinion provider). Add a `.env` with real keys to use Anthropic/OpenAI.
 
 **Option B — Node, no Docker (in-memory):**
+
 ```bash
 git clone <repo> && cd sentinel
 npm install
 npm run sidecar                      # → http://localhost:4000/dashboard  (in-memory store, mock provider)
 ```
+
 Then send your first gated action — see **[docs/getting-started.md](./docs/getting-started.md)**.
 
 ## Quick start (development)
@@ -84,32 +89,40 @@ Open **`http://localhost:4000/dashboard`** for the console: live decision feed, 
 The agent-side SDK is a separate, **dependency-free** package — `@montanalabs/sentinel-sdk` (npm) — so installing it in an agent pulls in no server/DB/model libraries:
 
 ```ts
-import { SentinelClient, Action } from '@montanalabs/sentinel-sdk';   // zero runtime deps
+import { SentinelClient, Action } from "@montanalabs/sentinel-sdk"; // zero runtime deps
 
-const sentinel = new SentinelClient({ endpoint: 'http://localhost:4000' }); // fail-closed by default
+const sentinel = new SentinelClient({ endpoint: "http://localhost:4000" }); // fail-closed by default
 
-const action = Action.payment({ amount: 42_000, from: 'acct_ops', to: 'vendor_42' });
-const decision = await sentinel.guard(action, { runId, provider: 'anthropic' }, 'fintech.payments');
+const action = Action.payment({
+  amount: 42_000,
+  from: "acct_ops",
+  to: "vendor_42",
+});
+const decision = await sentinel.guard(
+  action,
+  { runId, provider: "anthropic" },
+  "fintech.payments",
+);
 
 if (SentinelClient.allowed(decision)) {
-  await executePayment(action);          // only runs on ALLOW
+  await executePayment(action); // only runs on ALLOW
 } else {
-  handle(decision);                       // BLOCK reason, or ESCALATE -> review queue (decision.escalationId)
+  handle(decision); // BLOCK reason, or ESCALATE -> review queue (decision.escalationId)
 }
 ```
 
 ### HTTP API
 
-| Method & path | Purpose |
-|---|---|
-| `POST /v1/guard` | Gate one action → decision (+ `escalationId` when ESCALATE) |
-| `POST /v1/guard/batch` | Gate a multi-agent fan-out in one linked chain |
-| `GET /v1/records[?verdict=&tenant=&runId=&since=&until=&limit=&offset=]` | Query provenance |
-| `GET /v1/records/:id` | One record |
-| `GET /v1/verify` | Verify the whole hash-chain is intact |
-| `GET /v1/export` | Export records (feed a GRC platform) |
-| `GET /v1/escalations[?status=pending]` | Review queue |
-| `POST /v1/escalations/:id/resolve` | Human approve/deny → appends a signed `human.review` record |
+| Method & path                                                            | Purpose                                                     |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| `POST /v1/guard`                                                         | Gate one action → decision (+ `escalationId` when ESCALATE) |
+| `POST /v1/guard/batch`                                                   | Gate a multi-agent fan-out in one linked chain              |
+| `GET /v1/records[?verdict=&tenant=&runId=&since=&until=&limit=&offset=]` | Query provenance                                            |
+| `GET /v1/records/:id`                                                    | One record                                                  |
+| `GET /v1/verify`                                                         | Verify the whole hash-chain is intact                       |
+| `GET /v1/export`                                                         | Export records (feed a GRC platform)                        |
+| `GET /v1/escalations[?status=pending]`                                   | Review queue                                                |
+| `POST /v1/escalations/:id/resolve`                                       | Human approve/deny → appends a signed `human.review` record |
 
 ## Rate limiting & backpressure
 
@@ -135,8 +148,11 @@ Built-in vertical packs (configurable, composable):
 - **`healthcare.record_write`** — schema, clinician sign-off on clinically-significant changes, PHI data-boundary, **patient-exists verification** against a clinical (FHIR-style) connector, second opinion.
 
 ```ts
-import { defaultRegistry, fintechPaymentsPack } from 'sentinel';
-const registry = defaultRegistry({ ledger, provider }, { fintech: { highValueThreshold: 25_000 } });
+import { defaultRegistry, fintechPaymentsPack } from "sentinel";
+const registry = defaultRegistry(
+  { ledger, provider },
+  { fintech: { highValueThreshold: 25_000 } },
+);
 ```
 
 ## Control plane
