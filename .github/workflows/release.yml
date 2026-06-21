@@ -6,7 +6,8 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write # to create the GitHub Release and upload assets
+  contents: write # create the GitHub Release and upload assets
+  packages: write # push the Docker image to GHCR
 
 jobs:
   # Build a standalone `sentinel` binary per platform and attach it to the Release.

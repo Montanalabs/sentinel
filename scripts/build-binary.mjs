@@ -11,9 +11,10 @@
  * Usage:  node scripts/build-binary.mjs
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, copyFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, copyFileSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
+import { inject } from 'postject';
 
 const FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2';
 const isWin = process.platform === 'win32';
@@ -63,11 +64,13 @@ async function main() {
     }
   }
 
-  // 5. Inject the blob.
+  // 5. Inject the blob via postject's programmatic API. (Spawning `npx postject` fails on Windows:
+  //    execFileSync can't run `npx.cmd` without a shell — EINVAL.)
   console.log('• injecting blob (postject)');
-  const postjectArgs = [BIN, 'NODE_SEA_BLOB', BLOB, '--sentinel-fuse', FUSE];
-  if (isMac) postjectArgs.push('--macho-segment-name', 'NODE_SEA');
-  sh(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['postject', ...postjectArgs]);
+  await inject(BIN, 'NODE_SEA_BLOB', readFileSync(BLOB), {
+    sentinelFuse: FUSE,
+    ...(isMac ? { machoSegmentName: 'NODE_SEA' } : {}),
+  });
 
   // 6. Re-sign on macOS (ad-hoc) so Gatekeeper will run it.
   if (isMac) sh('codesign', ['--sign', '-', BIN]);
