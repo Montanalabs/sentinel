@@ -53,8 +53,9 @@ export function keyIdFor(raw: Buffer): string {
  * instance. Construct one via {@link Signer.fromSeed} (deterministic) or
  * {@link Signer.generate} (random), then pass it to a {@link RecordBuilder}.
  *
- * @remarks `keyId` is a short, stable fingerprint of the public key (`ed25519:` + first 16 hex
- *   chars of its SHA-256), suitable for tagging records and matching signers across a chain.
+ * @remarks `keyId` is a stable, collision-resistant fingerprint of the public key (`ed25519:` +
+ *   the **full** SHA-256, 64 hex — see {@link keyIdFor}), used to tag records and pin trusted
+ *   signers across a chain.
  */
 export class Signer {
   private constructor(
