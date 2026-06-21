@@ -63,8 +63,10 @@ irm https://montanalabs.ai/sentinel/install.ps1 | iex
 curl -fsSL https://montanalabs.ai/sentinel/install.cmd -o install.cmd && install.cmd
 ```
 
-**Package managers** — Homebrew (macOS/Linux): `brew install montanalabs/tap/sentinel` ·
-WinGet (Windows): `winget install MontanaLabs.Sentinel`
+**Docker** — `docker run -p 4000:4000 --env-file .env ghcr.io/montanalabs/sentinel:latest`
+(see [Deploying](./docs/deploying.md)).
+
+_Homebrew and WinGet packages are planned — for now use the install scripts above or Docker._
 
 > The `montanalabs.ai/sentinel/install.*` URLs redirect to the scripts in this repo. If the redirect
 > isn't reachable, install directly from GitHub:
@@ -107,7 +109,7 @@ npm install
 cp .env.example .env          # add ANTHROPIC_API_KEY / OPENAI_API_KEY (or keep provider=mock)
 npm test                      # 377 unit tests, no external services
 npm run demo                  # boots a real sidecar, drives it over HTTP end-to-end
-npx sentinel init my-gate     # scaffold a customized self-host project
+sentinel init my-gate     # scaffold a customized self-host project
 ```
 
 ### Run the sidecar
@@ -168,7 +170,7 @@ SENTINEL_RATE_LIMIT_BURST=200 SENTINEL_RATE_LIMIT_RPS=100 SENTINEL_MAX_CONCURREN
 
 ## Packaging
 
-`npm run build` emits `dist/` with declarations. The package `exports` map exposes `.`, `./sidecar`, and `./policy-packs`. The agent-side client is a separate package (`@montanalabs/sentinel-sdk`). `npm publish` runs the build via `prepublishOnly`.
+`npm run build` emits `dist/`; `npm run build:binary` bundles it into a standalone executable. The server is distributed as a **standalone binary** (the install scripts above) and a **Docker image** (`ghcr.io/montanalabs/sentinel`) — not published to npm. The agent-side client *is* a separate npm package (`@montanalabs/sentinel-sdk`).
 
 ## Provenance
 

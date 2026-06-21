@@ -97,10 +97,11 @@ Every decision is an append-only, **hash-chained** record signed with **Ed25519*
 ## The server is a package + image, not generated code
 You don't scaffold or fork the engine — you run a published artifact and configure it. Three ways, increasing in customization:
 
-### 1. CLI (npm)
+### 1. CLI (standalone binary)
 ```bash
-npx sentinel start          # runs the gate from .env  (npx sentinel keygen, init, verify too)
+sentinel start          # runs the gate from .env  (sentinel keygen, init, verify too)
 ```
+Install it with the script in the [README](../README.md#install-the-cli) — no Node.js required.
 
 ### 2. Docker (stock image)
 ```bash
@@ -121,9 +122,9 @@ services:
 
 ### 3. Scaffold a customized project (interactive wizard)
 ```bash
-npx sentinel init my-gate    # asks: port, provider, store, which packs, custom pack, signing seed
+sentinel init my-gate    # asks: port, provider, store, which packs, custom pack, signing seed
                              #  then scaffolds a tailored project and offers to install + start
-npx sentinel init my-gate --yes   # non-interactive (defaults), for CI/scripts
+sentinel init my-gate --yes   # non-interactive (defaults), for CI/scripts
 ```
 The wizard generates a thin project that **depends on** `sentinel` (the engine stays a dependency — upgrades via `npm update sentinel`, nothing forked). It writes a `src/server.ts` wired to exactly the packs/connectors you chose, a `src/my-pack.ts` template (if requested), `.env` pre-filled, a `Dockerfile`, and `docker-compose.yml`. At the end it can run `npm install` and `npm start` for you.
 

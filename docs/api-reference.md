@@ -21,7 +21,10 @@ interface ProvenanceRecord { id, ts, seq, prevHash, contentHash, keyId, signerPu
 ---
 
 ## `GET /healthz`
-Liveness. → `200 { "status": "ok" }`
+Liveness (process up; does not touch the store). → `200 { "status": "ok" }`
+
+## `GET /readyz`
+Readiness — checks the provenance store is reachable. → `200 { "status": "ready" }` · **503** when the store is unavailable. Wire to your load balancer / k8s readiness probe.
 
 ## `POST /v1/guard`
 Gate one action.
@@ -68,6 +71,37 @@ Export records (to feed a GRC platform / control plane). Accepts the same filter
 Record a human decision; appends a signed `human.review` provenance record (ALLOW if approved, BLOCK if denied), keeping the chain valid.
 **Body:** `{ decision: 'approve' | 'deny', approver: string }`
 **200:** `{ escalation, recordId }` · **404:** unknown id · **409:** already resolved.
+
+---
+
+## Adjudication protocol
+
+Additive routes, registered only when `SENTINEL_PROTOCOL_ENABLED=1` (the core routes above are unchanged). They turn an `ALLOW` into a signed, single-use **authorization receipt** and let an executor validate and audit it. See [adjudication-protocol.md](./adjudication-protocol.md).
+
+### `POST /v1/adjudications`
+Run the adjudicator; on `ALLOW` it issues, persists, and returns a receipt.
+**Body:** `{ guard: { action, context, policy }, action: CanonicalAction, contextDigest: hex64, policy: PolicyManifest, evidence: EvidenceItem[], model?: { verdict, confidence? }, independence?: …, humanApprovalReference?, receiptTtlMs?, maxExecutions? }`
+**200:** `{ finalVerdict, adjudication, policy, evidence, independenceWarnings, recordId, receipt? }` (`receipt` present iff `finalVerdict === 'ALLOW'`). **400:** invalid body / non-canonical action.
+
+### `POST /v1/receipts/validate`
+Validate a receipt for an execution binding (consumes its single-use nonce on success).
+**Body:** `{ receipt, binding: { actionDigest: hex64, contextDigest: hex64, expectedPolicyBundleDigest?, requireHumanApproval? } }`
+**200:** `{ ok: true, executionCount }` or `{ ok: false, error: { code, message } }` (a validation *result*, not a transport error).
+
+### `POST /v1/executions`
+Ingest a signed execution receipt into the audit log (rejected if the executor signature is untrusted/invalid).
+**Body:** `ExecutionReceipt` · **200:** `{ stored: true, executionId }` · **400:** untrusted/invalid signature.
+
+### `POST /v1/receipts/revoke`
+Revoke a receipt id (fails closed at the next validation).
+**Body:** `{ receiptId: string, reason? }` · **200:** `{ revoked: true, receiptId }`
+
+### `GET /v1/audit/verify`
+Complete-mediation audit over persisted authorization + execution receipts.
+**200:** `{ valid, executionsChecked, violations: [{ type, executionId?, authorizationReceiptId?, detail }], coverage }`
+
+### `GET /v1/audit/coverage`
+**200:** `{ valid, executionsChecked, coverage }`
 
 ---
 

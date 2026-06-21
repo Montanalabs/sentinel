@@ -24,7 +24,7 @@ os="$(uname -s)"; arch="$(uname -m)"
 case "$os" in
   Darwin) os="darwin" ;;
   Linux)  os="linux" ;;
-  *) err "unsupported OS: $os (use the npm install instead: npm i -g sentinel)" ;;
+  *) err "unsupported OS: $os (use the Docker image: docker run ghcr.io/montanalabs/sentinel:latest)" ;;
 esac
 case "$arch" in
   x86_64|amd64) arch="x64" ;;

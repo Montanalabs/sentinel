@@ -46,10 +46,10 @@ Not the engine — the **layer above it**: the multi-tenant control plane (aggre
 ## The CLI (`sentinel`)
 The self-host entry point.
 ```bash
-npx sentinel init my-gate     # scaffold a project: .env, docker-compose, server.ts + a sample custom pack
-npx sentinel keygen           # print a base64 Ed25519 seed for SENTINEL_SIGNING_SEED (stable signer identity)
-npx sentinel start            # run the sidecar from .env
-npx sentinel verify [url]     # verify the provenance chain of a running sidecar
+sentinel init my-gate     # scaffold a project: .env, docker-compose, server.ts + a sample custom pack
+sentinel keygen           # print a base64 Ed25519 seed for SENTINEL_SIGNING_SEED (stable signer identity)
+sentinel start            # run the sidecar from .env
+sentinel verify [url]     # verify the provenance chain of a running sidecar
 ```
 `sentinel init` generates a runnable starting point — a `src/server.ts` that wires your connectors and registers the built-in packs **plus** a `src/my-pack.ts` template — so a self-hoster customizes policy without assembling the engine by hand.
 
@@ -58,6 +58,6 @@ npx sentinel verify [url]     # verify the provenance chain of a running sidecar
 |---|---|---|---|
 | TS SDK | npm | `@montanalabs/sentinel-sdk` | none |
 | Python SDK | PyPI | `sentinel-guard` | none (stdlib) |
-| Server | npm (+ Docker image) | `sentinel` (or `@montanalabs/sentinel`) | fastify, pg, ajv, providers |
+| Server | standalone binary (GitHub Releases) + Docker image (GHCR) — **not** on npm | `sentinel` | fastify, pg, ajv, providers |
 
 **Licensing (recommended split):** SDKs → Apache-2.0 (max adoption); server → source-available (FSL/BSL — inspectable + self-hostable, not resaleable as a service); control plane → commercial. *(Names and license are placeholders pending your confirmation.)*
