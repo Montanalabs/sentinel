@@ -3,7 +3,7 @@
 A 10-minute path from zero to a gated AI action with a signed audit record — using both SDKs.
 
 ## 0. Prerequisites
-- Node.js ≥ 20 (for the sidecar and the TS SDK)
+- Node.js ≥ 22.5 to run the sidecar from source (it uses the built-in `node:sqlite`); the standalone binary and Docker image need no Node at all
 - Python ≥ 3.9 (only if you use the Python SDK)
 - No API keys or database needed for this walkthrough (we use the `mock` second-opinion provider and the in-memory store).
 

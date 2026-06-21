@@ -5,7 +5,7 @@ Sentinel is the **independent verification & action-gate** for AI agents. You ru
 > Trust model: the sidecar is a separate trust boundary from the agent. It holds the policy, renders the verdict, and signs records with a key the agent never sees. That independence is the point — a model vendor certifying its own model's output is not something an auditor can accept.
 
 ## Requirements
-- Node.js ≥ 20
+- Node.js ≥ 22.5 (the sidecar uses the built-in `node:sqlite`) — or just run the standalone binary / Docker image, which bundle their own runtime
 - (Optional) Postgres for durable provenance — without it, an in-memory store is used (fine for dev).
 - (Optional) An Anthropic and/or OpenAI API key for the cross-model "second opinion" check (or run with the `mock` provider).
 
