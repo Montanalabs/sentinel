@@ -29,11 +29,13 @@ if errorlevel 1 (
 echo.
 echo Installed to %SENTINEL_INSTALL_DIR%\sentinel.exe
 
-REM Add to the user PATH if not already present.
+REM Add to the USER PATH via PowerShell's .NET API. Do NOT `setx PATH "%PATH%;..."`: %PATH% is the
+REM merged system+user PATH, so that copies the whole system PATH into the user PATH, and setx
+REM silently truncates at 1024 chars — together they can corrupt the user's PATH.
 echo %PATH% | find /i "%SENTINEL_INSTALL_DIR%" >nul
 if errorlevel 1 (
-  setx PATH "%PATH%;%SENTINEL_INSTALL_DIR%" >nul
-  echo Added %SENTINEL_INSTALL_DIR% to your PATH ^(open a new terminal to pick it up^).
+  powershell -NoProfile -Command "$p=[Environment]::GetEnvironmentVariable('Path','User'); if ($p -notlike '*%SENTINEL_INSTALL_DIR%*') { [Environment]::SetEnvironmentVariable('Path', (($p.TrimEnd(';') + ';%SENTINEL_INSTALL_DIR%').TrimStart(';')), 'User') }" >nul 2>nul
+  echo Added %SENTINEL_INSTALL_DIR% to your user PATH ^(open a new terminal to pick it up^).
 )
 
 echo.
