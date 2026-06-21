@@ -16,7 +16,7 @@ import { dirname, join, resolve, basename, relative } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { spawnSync } from 'node:child_process';
 import { stdin, stdout } from 'node:process';
-import { scaffoldFiles, type ScaffoldOptions } from './scaffold.js';
+import { scaffoldFiles, StoreKind, type ScaffoldOptions } from './scaffold.js';
 import { runWizard, type Ask } from './wizard.js';
 import { generateSigningSeed } from './keygen.js';
 import { heroBanner, startBanner, accent } from './brand.js';
@@ -111,6 +111,22 @@ async function init(dir: string | undefined, interactive: boolean): Promise<void
   writeScaffold(target, opts);
 
   if (startNow) {
+    // A Postgres gate needs the database up first, or `sentinel start` dead-ends on a connection
+    // error. Bring it up via the scaffolded compose if Docker is available; otherwise guide the
+    // operator and don't crash-start.
+    if (opts.store === StoreKind.Postgres) {
+      const hasDocker = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore' }).status === 0;
+      if (hasDocker) {
+        stdout.write('\nStarting Postgres (docker compose up -d postgres)…\n');
+        spawnSync('docker', ['compose', 'up', '-d', 'postgres'], { cwd: target, stdio: 'inherit' });
+      } else {
+        stdout.write(
+          `\nYour gate uses Postgres — start it first, then run the sidecar:\n  cd ${rel}\n` +
+            `  docker compose up -d postgres   # or point SENTINEL_DATABASE_URL in .env at your own Postgres\n  sentinel start\n`,
+        );
+        return; // don't auto-start into a connection error
+      }
+    }
     // --watch so edits to .env (e.g. adding your API key) are picked up live during onboarding.
     stdout.write('\nStarting the sidecar (Ctrl+C to stop) — edits to .env reload automatically…\n');
     const res = spawnSync('sentinel', ['start', '--watch'], { cwd: target, stdio: 'inherit' });

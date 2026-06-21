@@ -83,9 +83,13 @@ async function boot(): Promise<boolean> {
     printPreflight(config);
     return true;
   } catch (err) {
-    console.error(`${danger('Sentinel sidecar failed to start:')} ${(err as Error).message}`);
+    // pg's connection-refused error often has an empty .message; fall back to its code so the
+    // operator gets something actionable instead of a bare "failed to start:".
+    const e = err as { message?: string; code?: string };
+    const detail = e.message || e.code || String(err);
+    console.error(`${danger('Sentinel sidecar failed to start:')} ${detail}`);
     if ((config.databaseUrl ?? '').startsWith('postgres')) {
-      console.error(`  ${dim('↳ is Postgres running and reachable? for local dev: docker compose up')}`);
+      console.error(`  ${dim('↳ is Postgres running and reachable at SENTINEL_DATABASE_URL? for local dev: docker compose up -d postgres')}`);
     }
     return false;
   }
