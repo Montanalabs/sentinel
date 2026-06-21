@@ -79,7 +79,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@montanalabs/sentinel-sdk": "file:../sentinel-sdks/typescript",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
     "esbuild": "^0.28.1",

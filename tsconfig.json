@@ -20,5 +20,7 @@
     "types": ["node"]
   },
   "include": ["src/**/*", "test/**/*", "examples/**/*", "eval/**/*"],
-  "exclude": ["node_modules", "dist"]
+  // sdk-integration.ts imports @montanalabs/sentinel-sdk (a separate package, not yet published),
+  // so it can't typecheck in a clean install — keep it as illustrative code, out of the build/CI.
+  "exclude": ["node_modules", "dist", "examples/sdk-integration.ts"]
 }
