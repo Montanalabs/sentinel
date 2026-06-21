@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+.DS_Store
+
+# otel collector output
+.otel-out/
+
+# local agent tooling (skills, runtime state)
+.claude/

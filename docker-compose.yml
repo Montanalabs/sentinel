@@ -1,0 +1,36 @@
+# One-command local Sentinel: Postgres + the sidecar.
+#   docker compose up --build           -> http://localhost:4000/dashboard
+#
+# No API keys required (defaults to the `mock` second-opinion provider). To use a
+# real provider, set SENTINEL_SECOND_OPINION_PROVIDER + ANTHROPIC_API_KEY/OPENAI_API_KEY
+# in a .env file next to this one (compose reads it automatically).
+name: sentinel
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  sentinel:
+    build: .
+    ports: ["4000:4000"]
+    environment:
+      SENTINEL_SIDECAR_PORT: "4000"
+      SENTINEL_DATABASE_URL: postgres://sentinel:sentinel@postgres:5432/sentinel
+      SENTINEL_SECOND_OPINION_PROVIDER: ${SENTINEL_SECOND_OPINION_PROVIDER:-mock}
+      SENTINEL_SECOND_OPINION_MODEL: ${SENTINEL_SECOND_OPINION_MODEL:-claude-sonnet-4-6}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SENTINEL_SIGNING_SEED: ${SENTINEL_SIGNING_SEED:-}
+    depends_on:
+      postgres:
+        condition: service_healthy

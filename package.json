@@ -1,0 +1,56 @@
+{
+  "name": "sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sentinel — the independent verification & action-gate between an AI agent's decision and a consequential action.",
+  "license": "Apache-2.0",
+  "author": "Montana Labs",
+  "homepage": "https://github.com/montanalabs/sentinel#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/montanalabs/sentinel.git" },
+  "bugs": { "url": "https://github.com/montanalabs/sentinel/issues" },
+  "keywords": ["sentinel", "ai", "agents", "guardrails", "governance", "action-gate", "provenance", "audit", "llm"],
+  "type": "module",
+  "engines": { "node": ">=22.5.0" },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": ["dist", "README.md", "LICENSE"],
+  "bin": { "sentinel": "./dist/cli/main.js" },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./sidecar": { "types": "./dist/sidecar/server.d.ts", "import": "./dist/sidecar/server.js" },
+    "./policy-packs": { "types": "./dist/policy-packs/index.d.ts", "import": "./dist/policy-packs/index.js" },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:int": "vitest run --config vitest.integration.config.ts",
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "demo": "tsx examples/demo.ts",
+    "example:sdk": "tsx examples/sdk-integration.ts",
+    "sidecar": "tsx src/sidecar/main.ts",
+    "cli": "tsx src/cli/main.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "openai": "^6.10.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "fastify": "^5.2.0",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@montanalabs/sentinel-sdk": "file:../sentinel-sdks/typescript",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
