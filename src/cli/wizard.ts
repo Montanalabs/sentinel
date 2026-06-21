@@ -27,12 +27,24 @@ import { generateSigningSeed } from './keygen.js';
  */
 export type Ask = (label: string, prompt: string, def: string) => Promise<string>;
 
-const DEFAULT_DB = 'postgres://sentinel:sentinel@localhost:5433/sentinel';
+// Matches scaffold.ts and the generated docker-compose (host port 5432:5432).
+const DEFAULT_DB = 'postgres://sentinel:sentinel@localhost:5432/sentinel';
 
-function normProvider(v: string): ProviderKind {
-  const p = v.trim().toLowerCase();
-  if (p === ProviderKind.Anthropic) return ProviderKind.Anthropic;
-  if (p === ProviderKind.OpenAI) return ProviderKind.OpenAI;
+const PROVIDERS: readonly string[] = [ProviderKind.Mock, ProviderKind.Anthropic, ProviderKind.OpenAI];
+
+/**
+ * Ask for the second-opinion provider, re-prompting on an unrecognized value instead of silently
+ * falling back to `mock`. After a few invalid attempts it defaults to `mock` so a non-interactive or
+ * piped run can never hang.
+ */
+async function askProvider(ask: Ask): Promise<ProviderKind> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const raw = (await ask('provider', 'Second-opinion provider (mock/anthropic/openai)', ProviderKind.Mock)).trim().toLowerCase();
+    if (raw === '') return ProviderKind.Mock;
+    if (PROVIDERS.includes(raw)) return raw as ProviderKind;
+    // Only nag on a real terminal, so tests/pipes stay quiet.
+    if (process.stdout.isTTY) process.stderr.write(`  "${raw}" is not a known provider — choose mock, anthropic, or openai\n`);
+  }
   return ProviderKind.Mock;
 }
 
@@ -50,11 +62,14 @@ const yes = (v: string): boolean => v.trim().toLowerCase().startsWith('y');
  * Drive the interactive `sentinel init` flow and assemble the scaffold options.
  *
  * Walks the operator through each configuration question via {@link ask},
- * normalizing freeform input into typed values: unknown providers fall back to
- * {@link ProviderKind.Mock}, unknown stores to {@link StoreKind.Memory}, and an empty
- * pack selection to `[`{@link PackId.Fintech}`]`. When the operator opts in, a
- * fresh signing seed is generated with {@link generateSigningSeed}. The `model`
- * field is omitted for the mock provider since it needs none.
+ * normalizing freeform input into typed values: an unrecognized provider is
+ * re-prompted (then defaults to {@link ProviderKind.Mock}) rather than silently
+ * mocked; the store defaults to {@link StoreKind.Postgres} with an unknown value
+ * falling back to {@link StoreKind.Memory}; an empty pack selection becomes
+ * `[`{@link PackId.Fintech}`]`. When the operator opts in, a fresh signing seed is
+ * generated with {@link generateSigningSeed}. The `model` field is omitted for the
+ * mock provider since it needs none, and is accepted as-is otherwise (model names
+ * are not enumerable; an invalid one fails safe at run time — see below).
  *
  * @param ask - Prompt callback used for every question; see {@link Ask}.
  * @returns Fully-resolved {@link ScaffoldOptions} ready to pass to
@@ -67,12 +82,12 @@ export async function runWizard(ask: Ask): Promise<ScaffoldOptions> {
   const portRaw = Number((await ask('port', 'Port', '4000')).trim() || '4000');
   // Fall back to 4000 on a non-integer / out-of-range port so generated compose/README are valid.
   const port = Number.isInteger(portRaw) && portRaw > 0 && portRaw <= 65535 ? portRaw : 4000;
-  const provider = normProvider(await ask('provider', 'Second-opinion provider (mock/anthropic/openai)', 'mock'));
+  const provider = await askProvider(ask);
   const model =
     provider === ProviderKind.Mock
       ? undefined
       : (await ask('model', 'Model', provider === ProviderKind.OpenAI ? 'gpt-5.5' : 'claude-sonnet-4-6')).trim();
-  const storeAns = (await ask('store', 'Provenance store (memory/sqlite/postgres)', 'memory')).trim().toLowerCase();
+  const storeAns = (await ask('store', 'Provenance store (memory/sqlite/postgres)', 'postgres')).trim().toLowerCase();
   const store =
     storeAns === StoreKind.Postgres ? StoreKind.Postgres : storeAns === StoreKind.Sqlite ? StoreKind.Sqlite : StoreKind.Memory;
   let databaseUrl: string | undefined;
