@@ -8,7 +8,7 @@
  * Color is opt-out via {@link colorEnabled}; with color off it degrades to plain block art.
  */
 
-import { ESC, RESET, colorEnabled, accent, bold, dim } from '../term/colors.js';
+import { ESC, RESET, colorEnabled, truecolorEnabled, accent, bold, dim } from '../term/colors.js';
 
 // Re-export the palette so CLI callers import their accents from one place.
 export { accent, dim, bold, colorEnabled } from '../term/colors.js';
@@ -61,17 +61,23 @@ function gradientAt(t: number): string {
  * Each cell is the gradient glyph if filled; otherwise the shadow if the up-left cell is filled;
  * otherwise blank. Glyph cells win over shadow, so the shadow shows only where the letters don't.
  */
-function shadowArt(artRows: readonly string[], color: boolean): string {
+function shadowArt(artRows: readonly string[], color: boolean, truecolor: boolean): string {
   const w = Math.max(...artRows.map((r) => r.length));
   const filled = (r: number, c: number): boolean => (artRows[r]?.[c] ?? ' ') === '█';
+  // Truecolor terminals get the gradient + drop shadow; others get bold default-foreground letters
+  // (dark on light themes, light on dark themes) — never a downsampled 24-bit mess.
+  const glyph = (c: number): string => {
+    if (truecolor) return `${gradientAt(w <= 1 ? 0 : c / (w - 1))}█${RESET}`;
+    return color ? `${ESC}1m█${RESET}` : '█';
+  };
   const lines: string[] = [];
   for (let r = 0; r <= HEIGHT; r++) {
     let line = '';
     for (let c = 0; c <= w; c++) {
       if (filled(r, c)) {
-        line += color ? `${gradientAt(w <= 1 ? 0 : c / (w - 1))}█${RESET}` : '█';
-      } else if (r > 0 && c > 0 && filled(r - 1, c - 1)) {
-        line += color ? `${SHADOW}█${RESET}` : ' '; // shadow only renders in color
+        line += glyph(c);
+      } else if (truecolor && r > 0 && c > 0 && filled(r - 1, c - 1)) {
+        line += `${SHADOW}█${RESET}`; // drop shadow only in truecolor
       } else {
         line += ' ';
       }
@@ -96,15 +102,16 @@ function welcomeBox(visible: string, styled: string, color: boolean): string {
  *   in the welcome box (e.g. `v0.1.0`).
  * @returns The multi-line banner string (already styled or plain).
  */
-export function heroBanner(opts: { color?: boolean; version?: string } = {}): string {
+export function heroBanner(opts: { color?: boolean; version?: string; truecolor?: boolean } = {}): string {
   const color = opts.color ?? colorEnabled();
+  const truecolor = opts.truecolor ?? (color && truecolorEnabled());
   const ver = opts.version ? ` ${opts.version}` : '';
   const welcomeVisible = `✦  Welcome to Sentinel${ver} · by Montana Labs`;
   const welcomeStyled = `${accent('✦', color)}  Welcome to ${bold('Sentinel', color)}${accent(ver, color)}${dim(' · by Montana Labs', color)}`;
   return [
     welcomeBox(welcomeVisible, welcomeStyled, color),
     '',
-    shadowArt(blockArt('SENTINEL'), color),
+    shadowArt(blockArt('SENTINEL'), color, truecolor),
     '',
     `  ${dim('the independent action-gate for AI agents', color)}`,
   ].join('\n');

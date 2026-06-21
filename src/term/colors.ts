@@ -1,10 +1,14 @@
 /**
  * Terminal ANSI color helpers shared by the CLI banner and the sidecar's startup logs.
  *
- * One palette, one opt-out rule: color is emitted only when stdout is a terminal (or `FORCE_COLOR`
- * is set) and `NO_COLOR` is unset, and every helper degrades to the plain string otherwise — so
- * piping to a file or a non-TTY never leaks escape codes. Truecolor (24-bit) is used for the brand
- * hues, which every modern terminal supports.
+ * Two opt-out rules and a contrast rule:
+ *  - color is emitted only when stdout is a terminal (or `FORCE_COLOR` is set) and `NO_COLOR` is unset;
+ *  - 24-bit *truecolor* (the brand gradient/accent) is used only when the terminal advertises it via
+ *    `COLORTERM`, since terminals without it (e.g. Apple Terminal) downsample 24-bit codes to garish
+ *    ANSI approximations — the accent falls back to a 16-color magenta instead;
+ *  - text and semantic log colors use **16-color ANSI** (`bold` is weight-only, `success`/`warn`/
+ *    `danger` are the theme's green/yellow/red), so they stay readable on light *and* dark
+ *    backgrounds instead of assuming a dark theme with bright-white text.
  */
 
 import { stdout } from 'node:process';
@@ -13,7 +17,7 @@ import { stdout } from 'node:process';
 export const ESC = '\x1b[';
 /** SGR reset. */
 export const RESET = `${ESC}0m`;
-/** The Montana Labs brand violet (≈ #7C6AFF) as a truecolor SGR parameter. */
+/** The Montana Labs brand violet (≈ #7C6AFF) as a 24-bit SGR parameter. */
 export const VIOLET = '38;2;124;106;255';
 
 /**
@@ -26,19 +30,33 @@ export function colorEnabled(): boolean {
   return Boolean(stdout.isTTY) || Boolean(process.env['FORCE_COLOR']);
 }
 
-function style(codes: string): (s: string, color?: boolean) => string {
+/**
+ * Whether 24-bit truecolor (the brand gradient) should be used.
+ *
+ * @returns `true` when color is on and `COLORTERM` advertises `truecolor`/`24bit`.
+ */
+export function truecolorEnabled(): boolean {
+  if (!colorEnabled()) return false;
+  const ct = process.env['COLORTERM'];
+  return ct === 'truecolor' || ct === '24bit';
+}
+
+function paint(codes: string): (s: string, color?: boolean) => string {
   return (s, color = colorEnabled()) => (color ? `${ESC}${codes}m${s}${RESET}` : s);
 }
 
-/** Brand accent (violet). */
-export const accent = style(VIOLET);
-/** Bright/bold white (wordmark weight). */
-export const bold = style('1;97');
+/** Brand accent: truecolor violet where supported, else 16-color magenta. */
+export function accent(s: string, color = colorEnabled()): string {
+  if (!color) return s;
+  return `${ESC}${truecolorEnabled() ? VIOLET : '35'}m${s}${RESET}`;
+}
+/** Bold, in the terminal's default foreground — readable on light and dark backgrounds. */
+export const bold = paint('1');
 /** Dimmed secondary text. */
-export const dim = style('2');
-/** Success/healthy (emerald, ≈ #34D399). */
-export const success = style('38;2;52;211;153');
-/** Warning (amber, ≈ #F5C842). */
-export const warn = style('38;2;245;200;66');
-/** Error (red, ≈ #F87171). */
-export const danger = style('38;2;248;113;113');
+export const dim = paint('2');
+/** Success — the theme's green (16-color, adapts to the background). */
+export const success = paint('32');
+/** Warning — the theme's yellow/amber (16-color). */
+export const warn = paint('33');
+/** Error — the theme's red (16-color). */
+export const danger = paint('31');

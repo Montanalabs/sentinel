@@ -12,11 +12,17 @@ describe('brand', () => {
     expect(b).not.toContain('\x1b'); // no ANSI when color is off
   });
 
-  test('colored banner emits the gradient and the shadow color', () => {
-    const b = heroBanner({ color: true });
+  test('truecolor banner emits the gradient and the drop-shadow color', () => {
+    const b = heroBanner({ color: true, truecolor: true });
     expect(b).toContain(`${'\x1b'}[38;2;`); // truecolor stops (gradient + shadow)
     expect(b).toContain('\x1b[38;2;58;54;94m'); // drop-shadow color
     expect(b).toContain('\x1b[0m'); // reset
+  });
+
+  test('non-truecolor banner uses bold default-foreground letters, no 24-bit codes', () => {
+    const b = heroBanner({ color: true, truecolor: false });
+    expect(b).not.toContain('38;2;'); // never a downsampled 24-bit gradient
+    expect(b).toContain('\x1b[1m█'); // bold default-fg block (readable on light + dark)
   });
 
   test('the block-art rows are all the same display width', () => {
