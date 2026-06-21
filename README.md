@@ -71,6 +71,7 @@ Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run 
 ## Documentation
 
 - **[Self-hosting Sentinel](./docs/self-hosting.md)** — run the sidecar in your own environment
+- **[Adjudication protocol](./docs/adjudication-protocol.md)** — execution-bound receipts, the flow diagram, and the threat model
 - **TypeScript SDK** (`@montanalabs/sentinel-sdk` on npm) · **Python SDK** (`sentinel-guard` on PyPI) — the thin clients your agent imports to call the gate (published as separate packages)
 
 ## Run locally (clone → start)
@@ -167,6 +168,26 @@ SENTINEL_RATE_LIMIT_BURST=200 SENTINEL_RATE_LIMIT_RPS=100 SENTINEL_MAX_CONCURREN
 ## Provenance
 
 Every decision is an append-only, **hash-chained** record signed with **Ed25519**. `GET /v1/verify` (or `verifyChain()`) recomputes each content hash, checks the chain links, and verifies every signature — any insertion, deletion, or edit is detected. Records survive restarts: the sidecar resumes the chain from the persisted tail. Concurrency is safe at two levels: the append critical section is **serialized within an engine** (so concurrent requests to one sidecar can't corrupt the chain), and **across sidecars** a Postgres unique-seq constraint plus optimistic re-resume/retry keeps one fork-free chain (covered by a real-Postgres concurrent-writer stress test).
+
+## Adjudication protocol (execution-bound receipts)
+
+The core gate decides and signs a record. The optional **adjudication protocol** goes further: it turns
+an `ALLOW` into a signed, single-use, expiring **authorization receipt** bound to the exact action,
+context, policy, and evidence — so a downstream executor can prove the action it is about to run is the
+one that was authorized, and an auditor can prove it afterward. The invariant:
+
+> Every protected execution corresponds to **exactly one** valid authorization receipt, and the executed
+> action **exactly matches** the authorized action.
+
+A proposal-time verifier — even an ideal independent model — cannot stop action **substitution**,
+**replay**, or **forged** execution, because it gates the proposal and nothing binds execution. Binding
+execution to a single-use receipt does. The evaluation harness (`eval/`, `npm run eval`) quantifies
+this: an ideal independent verifier still scores 1.00 (full attack success) on those three; execution-
+bound receipts drive them to 0.00, with complete-mediation audit coverage and detection at 1.00.
+
+Enable with `SENTINEL_PROTOCOL_ENABLED=1` (additive — `/v1/guard` is unchanged). See
+**[docs/adjudication-protocol.md](./docs/adjudication-protocol.md)** for the flow diagram, the full
+threat model, and its explicit non-goals.
 
 ## Policy packs
 

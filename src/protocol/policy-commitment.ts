@@ -7,9 +7,9 @@
  * checkers that ran. A validator at execution time recomputes this and rejects the receipt if the
  * policy has changed (`POLICY_MISMATCH`), preventing policy substitution between approval and use.
  *
- * Note (see the protocol plan §3-B): policy packs contain *code*, which cannot be content-hashed;
- * this commits to the policy **definition data + config + explicit checker versions**, so the code
- * path is pinned by version. That boundary is intentional and documented.
+ * Note (see the threat model in `docs/adjudication-protocol.md`, non-goal 3): policy packs contain
+ * *code*, which cannot be content-hashed; this commits to the policy **definition data + config +
+ * explicit checker versions**, so the code path is pinned by version. That boundary is intentional.
  */
 
 import { createHash } from 'node:crypto';
