@@ -66,6 +66,10 @@ curl -fsSL https://montanalabs.ai/sentinel/install.cmd -o install.cmd && install
 **Package managers** — Homebrew (macOS/Linux): `brew install montanalabs/tap/sentinel` ·
 WinGet (Windows): `winget install MontanaLabs.Sentinel`
 
+> The `montanalabs.ai/sentinel/install.*` URLs redirect to the scripts in this repo. If the redirect
+> isn't reachable, install directly from GitHub:
+> `curl -fsSL https://raw.githubusercontent.com/montanalabs/sentinel/main/scripts/install.sh | bash`
+
 Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run the sidecar.
 
 ## Documentation
@@ -101,7 +105,7 @@ Then send your first gated action — see **[docs/getting-started.md](./docs/get
 ```bash
 npm install
 cp .env.example .env          # add ANTHROPIC_API_KEY / OPENAI_API_KEY (or keep provider=mock)
-npm test                      # 240+ unit tests, no external services
+npm test                      # 377 unit tests, no external services
 npm run demo                  # boots a real sidecar, drives it over HTTP end-to-end
 npx sentinel init my-gate     # scaffold a customized self-host project
 ```
@@ -253,11 +257,29 @@ examples/demo.ts
 
 ## Status
 
-240+ unit tests + integration tests, all green. The cross-model second opinion supports Anthropic
+377 unit tests + integration tests, all green. The cross-model second opinion supports Anthropic
 and OpenAI (or a built-in `mock` provider for offline/dev), and the provenance store supports
 in-memory, SQLite, and Postgres. **You bring your own** model provider, API key, and database — set
 them in your `.env` (see [Getting started](./docs/getting-started.md) and
 [Self-hosting](./docs/self-hosting.md)); Sentinel ships none of these credentials.
+
+## API stability & versioning
+
+Sentinel follows [Semantic Versioning](https://semver.org). From **1.0.0**, these are the stable
+surfaces — a breaking change to any of them means a **major** version bump:
+
+- the **HTTP `/v1/*` API** (request/response shapes and status codes);
+- the **verdict semantics** (`ALLOW` / `BLOCK` / `ESCALATE` and the `BLOCK > ESCALATE > ALLOW`
+  precedence);
+- the **provenance record + signature format** and the **adjudication-receipt format** — a breaking
+  change here also bumps the on-disk chain version, and old chains/receipts are flagged, never
+  silently accepted;
+- the documented `SENTINEL_*` environment variables and the published package exports.
+
+Internal modules (anything not in the above) may change in a minor release. Deprecations are announced
+in [CHANGELOG.md](./CHANGELOG.md) at least one minor version before removal. The 0.x → 1.0.0 upgrade
+carries one-time breaking changes (full-SHA-256 key id, loopback-default bind, provenance hash format)
+— see the changelog.
 
 ## Contributing & security
 

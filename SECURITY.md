@@ -37,8 +37,10 @@ See the security notes in the [README](./README.md) and [self-hosting docs](./do
 
 ## Supported Versions
 
-Sentinel is pre-1.0; security fixes are applied to the latest `main` and the most recent release.
+Security fixes are applied to the latest `1.0.x` release and to `main`. Pre-1.0 releases are no longer
+supported — upgrade to 1.0.0 (note the breaking changes in [CHANGELOG.md](./CHANGELOG.md)).
 
 | Version | Supported |
 | ------- | --------- |
-| 0.1.x   | Yes       |
+| 1.0.x   | Yes       |
+| < 1.0   | No        |
