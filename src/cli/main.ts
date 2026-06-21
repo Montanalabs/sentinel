@@ -19,7 +19,7 @@ import { stdin, stdout } from 'node:process';
 import { scaffoldFiles, type ScaffoldOptions } from './scaffold.js';
 import { runWizard, type Ask } from './wizard.js';
 import { generateSigningSeed } from './keygen.js';
-import { heroBanner, accent, dim } from './brand.js';
+import { heroBanner, startBanner, accent } from './brand.js';
 import { VERSION } from './version.js';
 
 /** Print the usage banner and command list to stdout. */
@@ -160,7 +160,7 @@ async function run(): Promise<void> {
       stdout.write(generateSigningSeed() + '\n');
       break;
     case 'start':
-      stdout.write(`\n${heroBanner({ version: `v${VERSION}` })}\n\n${dim('Starting the sidecar…')}\n`);
+      stdout.write(`\n${startBanner({ version: `v${VERSION}` })}\n`);
       await import('../sidecar/main.js'); // boots the sidecar from env
       break;
     case 'verify':

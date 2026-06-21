@@ -116,3 +116,19 @@ export function heroBanner(opts: { color?: boolean; version?: string; truecolor?
     `  ${dim('the independent action-gate for AI agents', color)}`,
   ].join('\n');
 }
+
+/**
+ * Compact one-line brand line for `sentinel start`.
+ *
+ * `start` is the operational command — it runs on every boot (including under systemd/docker and when
+ * auto-launched right after `init`), so it shows a single branded line rather than repeating the full
+ * {@link heroBanner}. That keeps the hero a one-time onboarding moment and avoids showing it twice.
+ *
+ * @param opts - `color` forces colorization (defaults to {@link colorEnabled}); `version` is appended.
+ * @returns A single indented line.
+ */
+export function startBanner(opts: { color?: boolean; version?: string } = {}): string {
+  const color = opts.color ?? colorEnabled();
+  const ver = opts.version ? ` ${opts.version}` : '';
+  return `  ${accent('✦', color)} ${bold('Sentinel', color)}${dim(ver, color)} ${dim('· starting the sidecar…', color)}`;
+}
