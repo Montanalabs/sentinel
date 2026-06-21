@@ -64,6 +64,7 @@
     "build": "tsc -p tsconfig.build.json",
     "build:binary": "npm run build && node scripts/build-binary.mjs",
     "demo": "tsx examples/demo.ts",
+    "eval": "tsx eval/run.ts",
     "example:sdk": "tsx examples/sdk-integration.ts",
     "sidecar": "tsx src/sidecar/main.ts",
     "cli": "tsx src/cli/main.ts"
@@ -82,6 +83,7 @@
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
     "esbuild": "^0.28.1",
+    "fast-check": "^4.8.0",
     "postject": "^1.0.0-alpha.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
