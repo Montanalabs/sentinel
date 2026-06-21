@@ -29,3 +29,5 @@ export type { ExecutionReceiptStore } from './execution-store.js';
 export { InMemoryExecutionReceiptStore } from './execution-memory.js';
 export { SqliteExecutionReceiptStore } from './execution-sqlite.js';
 export { PostgresExecutionReceiptStore } from './execution-postgres.js';
+export { SqliteRevocationStore } from './revocation-sqlite.js';
+export { PostgresRevocationStore } from './revocation-postgres.js';

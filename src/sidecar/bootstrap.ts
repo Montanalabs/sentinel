@@ -10,7 +10,6 @@ import type { ProtocolDeps } from './protocol-routes.js';
 import { ReceiptIssuer } from '../protocol/receipt-issuer.js';
 import { ReceiptValidator } from '../protocol/receipt-validator.js';
 import { Adjudicator } from '../protocol/adjudicator.js';
-import { InMemoryRevocationStore } from '../protocol/revocation-store.js';
 import { openProtocolStores, type ProtocolStores } from '../store/open-protocol-stores.js';
 import { warn, dim } from '../term/colors.js';
 import { defaultRegistry, type DefaultPacksConfig, type PolicyPack } from '../policy-packs/index.js';
@@ -163,7 +162,7 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
   if (config.protocolEnabled) {
     protocolStores = await openProtocolStores(config.databaseUrl);
     const issuer = new ReceiptIssuer(signer, { issuer: config.protocolIssuer ?? 'sentinel-gate' });
-    const revocations = new InMemoryRevocationStore();
+    const revocations = protocolStores.revocations; // durable + shared across replicas (Postgres/SQLite)
     // The gate signs receipts with the same key it signs provenance with, so the validator/audit
     // pin to that one issuer key. Executor keys are configured separately (the gate is not the executor).
     const trustedAuthKeys = new Map<string, Buffer>([[signer.keyId, signer.publicKeyRaw]]);
@@ -206,7 +205,12 @@ export async function buildSentinel(config: SentinelConfig, overrides: Bootstrap
       await app.close();
       await store.close();
       if (protocolStores) {
-        await Promise.all([protocolStores.nonces.close(), protocolStores.receipts.close(), protocolStores.executions.close()]);
+        await Promise.all([
+          protocolStores.nonces.close(),
+          protocolStores.receipts.close(),
+          protocolStores.executions.close(),
+          protocolStores.revocations.close(),
+        ]);
       }
     },
   };

@@ -13,6 +13,8 @@ export interface RevocationStore {
   revoke(receiptId: string): Promise<void>;
   /** Whether a receipt id has been revoked. */
   isRevoked(receiptId: string): Promise<boolean>;
+  /** Release any underlying resources (connections, file handles). */
+  close(): Promise<void>;
 }
 
 /** In-memory revocation list (non-durable; for single-node use/tests). */
@@ -25,5 +27,9 @@ export class InMemoryRevocationStore implements RevocationStore {
 
   async isRevoked(receiptId: string): Promise<boolean> {
     return this.revoked.has(receiptId);
+  }
+
+  async close(): Promise<void> {
+    this.revoked.clear();
   }
 }

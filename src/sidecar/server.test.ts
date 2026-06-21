@@ -112,12 +112,22 @@ describe('sidecar HTTP server', () => {
     expect(res.json()).toEqual({ ok: true });
   });
 
+  test('an off-list approver cannot resolve an escalation', async () => {
+    const escId = (await guard(app, 50000)).json().escalationId; // approvers: ['treasury_ops']
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/escalations/${escId}/resolve`,
+      payload: { decision: 'approve', approver: 'random_person' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
   test('resolving an escalation appends a human-decision record and keeps the chain valid', async () => {
     const escId = (await guard(app, 50000)).json().escalationId;
     const res = await app.inject({
       method: 'POST',
       url: `/v1/escalations/${escId}/resolve`,
-      payload: { decision: 'approve', approver: 'treasurer_jane' },
+      payload: { decision: 'approve', approver: 'treasury_ops' }, // in the escalation's approver list
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().recordId).toMatch(/^rec_/);

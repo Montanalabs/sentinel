@@ -315,6 +315,13 @@ export function buildServer(deps: SidecarDeps): FastifyInstance {
     const existing = deps.escalations.get(id);
     if (!existing) return httpError(reply, 404, 'escalation not found');
 
+    // Enforce the escalation's approver allowlist when one is set (empty = unrestricted). The gate
+    // itself is unauthenticated — this isn't a substitute for the gateway's authn — but it keeps the
+    // signed human-decision record honest: an off-list name can't be stamped as the approver.
+    if (existing.approvers.length > 0 && !existing.approvers.includes(parsed.data.approver)) {
+      return httpError(reply, 403, 'approver not in the escalation approver list');
+    }
+
     let escalation;
     try {
       escalation = await deps.escalations.resolve(id, parsed.data);
