@@ -10,7 +10,14 @@ REPO="${SENTINEL_REPO:-montanalabs/sentinel}"
 VERSION="${SENTINEL_VERSION:-latest}"
 INSTALL_DIR="${SENTINEL_INSTALL_DIR:-$HOME/.local/bin}"
 
-err() { printf 'error: %s\n' "$1" >&2; exit 1; }
+# Color only when stdout is a terminal (respects the NO_COLOR convention).
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; red=$'\033[31m'; reset=$'\033[0m'
+else
+  bold=''; dim=''; green=''; red=''; reset=''
+fi
+
+err() { printf '%serror:%s %s\n' "$red$bold" "$reset" "$1" >&2; exit 1; }
 
 # Detect platform → release asset name.
 os="$(uname -s)"; arch="$(uname -m)"
@@ -33,18 +40,18 @@ else
   url="https://github.com/${REPO}/releases/download/${VERSION}/${asset}"
 fi
 
-printf 'Installing sentinel (%s) for %s-%s...\n' "$VERSION" "$os" "$arch"
+printf '%sInstalling sentinel%s (%s) for %s-%s...\n' "$bold" "$reset" "$VERSION" "$os" "$arch"
 mkdir -p "$INSTALL_DIR"
 tmp="$(mktemp)"
-if ! curl -fsSL "$url" -o "$tmp"; then
+if ! curl -fSL --progress-bar "$url" -o "$tmp"; then
   err "download failed: $url (is there a release with the $asset asset?)"
 fi
 chmod +x "$tmp"
 mv "$tmp" "$INSTALL_DIR/sentinel"
 
-printf '\nInstalled to %s/sentinel\n' "$INSTALL_DIR"
+printf '\n%s✓ Installed%s to %s/sentinel\n' "$green$bold" "$reset" "$INSTALL_DIR"
 case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
-  *) printf '\nAdd it to your PATH:\n  export PATH="%s:$PATH"\n' "$INSTALL_DIR" ;;
+  *) printf '\n%sAdd it to your PATH:%s\n  export PATH="%s:$PATH"\n' "$dim" "$reset" "$INSTALL_DIR" ;;
 esac
-printf '\nRun:  sentinel --help\n'
+printf '\nRun:  %ssentinel --help%s\n' "$bold" "$reset"

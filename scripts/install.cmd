@@ -20,7 +20,7 @@ if "%SENTINEL_VERSION%"=="latest" (
 echo Installing sentinel (%SENTINEL_VERSION%) for Windows x64...
 if not exist "%SENTINEL_INSTALL_DIR%" mkdir "%SENTINEL_INSTALL_DIR%"
 
-curl -fsSL "%URL%" -o "%SENTINEL_INSTALL_DIR%\sentinel.exe"
+curl -fSL --progress-bar "%URL%" -o "%SENTINEL_INSTALL_DIR%\sentinel.exe"
 if errorlevel 1 (
   echo error: download failed: %URL%
   exit /b 1
