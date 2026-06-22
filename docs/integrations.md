@@ -44,16 +44,14 @@ export async function guarded<T>(
 }
 ```
 
----
-
-# Agent frameworks — gate the tool, not the model
+## Agent frameworks — gate the tool, not the model
 
 You don't gate the model; you gate the **tool that has side effects**. Put `guard()` inside the
-tool's executor and the model even *sees* a refusal it can react to. Note each framework names the
-schema field differently.
+tool's executor and the model even *sees* a refusal it can react to. Each framework names the schema
+field differently — pick your vendor:
 
-## Vercel AI SDK
-
+::::tabs
+:::tab{title="Vercel AI SDK"}
 `tool()` uses **`inputSchema`** (AI SDK v5+; it was `parameters` in v4).
 
 ```ts
@@ -73,10 +71,9 @@ const sendPayment = tool({
   },
 });
 ```
-
-## OpenAI Agents SDK (`@openai/agents`)
-
-`tool()` here requires a **`name`** and uses **`parameters`** (Zod).
+:::
+:::tab{title="OpenAI Agents SDK"}
+`tool()` from `@openai/agents` requires a **`name`** and uses **`parameters`** (Zod).
 
 ```ts
 import { tool } from '@openai/agents';
@@ -96,9 +93,8 @@ const sendPayment = tool({
   },
 });
 ```
-
-## Anthropic Claude — Messages tool use
-
+:::
+:::tab{title="Anthropic Claude"}
 Define tools with **`input_schema`**; gate inside the loop that dispatches `tool_use` blocks.
 
 ```ts
@@ -124,9 +120,8 @@ async function runTool(block) {
   return { type: 'tool_result', tool_use_id: block.id, content: String(content) };
 }
 ```
-
-## LangChain / LangGraph (Python)
-
+:::
+:::tab{title="LangChain / LangGraph"}
 A `@tool` works the same in a LangChain agent or a LangGraph `create_react_agent`.
 
 ```python
@@ -147,16 +142,18 @@ def send_payment(amount: float, to: str) -> str:
         return f"{d.verdict}: {d.reason}"   # the model sees the refusal and can adapt
     return pay(amount, to)
 ```
+:::
+::::
 
----
+## Payments & onchain — gate the provider call
 
-# Payments & onchain — gate the provider call
+For SDKs that *execute* value transfer directly, wrap the call in the [`guarded()`](#the-pattern)
+helper above:
 
-For SDKs that *execute* value transfer directly, wrap the call in [`guarded()`](#the-pattern).
-
-## Coinbase — CDP wallets (`@coinbase/cdp-sdk`)
-
-Gate the transfer so a hijacked key or hallucinated transfer can't move funds on its own:
+::::tabs
+:::tab{title="Coinbase CDP"}
+Gate a wallet transfer (`@coinbase/cdp-sdk`) so a hijacked key or hallucinated transfer can't move
+funds on its own:
 
 ```ts
 import { CdpClient } from '@coinbase/cdp-sdk';
@@ -178,11 +175,10 @@ dual-control sign-off above a threshold — verified independently of the agent,
 of every decision.
 
 > Using **Coinbase AgentKit** (`@coinbase/agentkit`)? Its actions are wired into your framework as
-> tools — so gate them with the [framework recipe](#agent-frameworks--gate-the-tool-not-the-model)
-> above (wrap the transfer action's executor), rather than exposing the raw write tool.
-
-## Coinbase — x402 agentic payments (`@x402/fetch`)
-
+> tools — gate them with the **Agent frameworks** recipe above (wrap the transfer action's
+> executor), rather than exposing the raw write tool.
+:::
+:::tab{title="Coinbase x402"}
 [x402](https://github.com/coinbase/x402) settles a payment in response to an HTTP `402`. Probe the
 price, gate it, then let the payment-enabled fetch settle only on `ALLOW`:
 
@@ -206,10 +202,9 @@ if (probe.status === 402) {
 }
 const res = await payFetch(resourceUrl);             // ALLOW → x402 signs, settles, returns the resource
 ```
-
-## Stripe (fiat)
-
-Gate the sensitive call directly with [`guarded()`](#the-pattern):
+:::
+:::tab{title="Stripe"}
+Gate the sensitive call directly with the [`guarded()`](#the-pattern) helper:
 
 ```ts
 import Stripe from 'stripe';
@@ -226,10 +221,10 @@ await guarded(
 
 > The [Stripe Agent Toolkit](https://github.com/stripe/agent-toolkit) (`@stripe/agent-toolkit`)
 > exposes Stripe operations to agents as tools via `.getTools()`. For write actions (refunds,
-> payouts, subscriptions), gate them with the [framework recipe](#agent-frameworks--gate-the-tool-not-the-model)
-> instead of exposing the raw tool.
-
----
+> payouts, subscriptions), gate them with the **Agent frameworks** recipe above instead of exposing
+> the raw tool.
+:::
+::::
 
 ## Where it fits any stack
 
