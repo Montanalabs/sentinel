@@ -106,7 +106,7 @@ Complete-mediation audit over persisted authorization + execution receipts.
 ---
 
 ## Status codes
-`200` ok · `400` invalid body · `404` not found · `409` already resolved · `429` rate-limited (if configured) · `503` overloaded (if `SENTINEL_MAX_CONCURRENT` exceeded).
+`200` ok · `400` invalid body **or unknown policy** (`{"error":"unknown policy pack: <id>"}`, since v1.0.2 — previously a 500) · `404` not found · `409` already resolved · `403` approver not on the escalation's allowlist · `429` rate-limited (if configured) · `503` store unavailable (`/readyz`) or overloaded (if `SENTINEL_MAX_CONCURRENT` exceeded). The sidecar never leaks internal exception detail — unexpected errors return a generic `500 {"error":"internal error"}`.
 
 ## Verdict semantics
 - **ALLOW** — proceed. **BLOCK** — do not execute; `reason` explains why. **ESCALATE** — hold for human review; an `escalationId` is created and resolvable via the escalations API.

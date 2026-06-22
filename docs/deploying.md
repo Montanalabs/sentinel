@@ -24,7 +24,7 @@ not a public endpoint. Sentinel's job is to *decide and sign*, not to do authn/z
 Released tags push a multi-arch image to GHCR:
 
 ```
-ghcr.io/montanalabs/sentinel:1.0.0      # pin a released tag in production
+ghcr.io/montanalabs/sentinel:1.0.2      # pin a released tag in production
 ghcr.io/montanalabs/sentinel:latest
 ```
 
@@ -48,7 +48,7 @@ returns 503 when the store is unreachable).
      -e SENTINEL_PROTOCOL_ENABLED=1 \
      -e SENTINEL_SECOND_OPINION_PROVIDER=anthropic -e ANTHROPIC_API_KEY="***" \
      -e SENTINEL_RATE_LIMIT_BURST=200 -e SENTINEL_RATE_LIMIT_RPS=100 \
-     ghcr.io/montanalabs/sentinel:1.0.0
+     ghcr.io/montanalabs/sentinel:1.0.2
    ```
 
    Or as a **systemd** unit (`/etc/systemd/system/sentinel.service`) wrapping the same `docker run`
