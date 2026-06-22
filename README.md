@@ -22,6 +22,8 @@
 
 When an agent is about to do something irreversible — move money, write a record, send a mail, close a ticket — there is usually **no independent, buyer-owned check** between the decision and the action. Teams hand-roll brittle guards or trust the model vendor's own "recovery," which an auditor can't accept (a vendor certifying its own model is a conflict of interest). Sentinel is that independent gate, signing an auditor-grade receipt for every decision — and it gets **more** valuable as agents are trusted with higher-stakes actions.
 
+> 📄 **White paper:** [*Sentinel: An Independent, Fail-Safe Action-Gate for Autonomous AI Agents*](WHITEPAPER.md) — threat model, formal model, the adjudication protocol, and evaluation.
+
 ## Architecture
 
 <p align="center">
