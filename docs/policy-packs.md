@@ -37,6 +37,9 @@ healthcareRecordsPack({ allowedProviders?, allowedRegions?, approvers? })
 Checks: `schema` → `policy:healthcare.record_write` (clinician sign-off when `payload.clinicalSignificant === true`) → `data-boundary` (PHI fields) → *(if a clinical connector is provided)* `patient-exists` → *(if a provider is provided)* `second-opinion`.
 
 ### Registering packs
+
+> `sentinel` here is the **server** package ([github.com/montanalabs/sentinel](https://github.com/montanalabs/sentinel)) — run from source for embedding, not the `@montanalabs/sentinel` client SDK.
+
 ```ts
 import { defaultRegistry } from 'sentinel';
 

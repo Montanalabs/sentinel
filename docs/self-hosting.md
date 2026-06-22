@@ -76,6 +76,9 @@ Built-in packs:
 - **`healthcare.record_write`** — schema, clinician sign-off on clinically-significant changes, PHI data-boundary enforcement, patient-exists verification (clinical connector), optional second opinion.
 
 Configure and register packs when embedding (see below):
+
+> `sentinel` here is the **server** package ([github.com/montanalabs/sentinel](https://github.com/montanalabs/sentinel)) — run from source for embedding, not the `@montanalabs/sentinel` client SDK.
+
 ```ts
 import { defaultRegistry } from 'sentinel';
 

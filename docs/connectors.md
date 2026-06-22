@@ -2,7 +2,7 @@
 
 Checks reconcile proposed actions against **your** systems of record. A connector is the independent source of truth Sentinel reads — its lookups **fail safe** so that when the truth is unavailable the gate ESCALATES rather than wrongly allowing.
 
-> **Wiring custom connectors is an embedding feature.** The `import { … } from 'sentinel'` examples below require running the gate **from source** (`git clone` + `npm install`) — the `sentinel` package is not yet published to npm. The standalone binary and Docker image run with the **built-in** packs/connectors; the published-package path for custom connectors via `sentinel.config.mjs` lands when the package is published.
+> **Wiring custom connectors is an embedding feature.** The `import { … } from 'sentinel'` examples below require running the gate **from source** (`git clone` + `npm install`) — here `sentinel` is the **server** package ([github.com/montanalabs/sentinel](https://github.com/montanalabs/sentinel)), distinct from the `@montanalabs/sentinel` client SDK, and is not yet published to npm. The standalone binary and Docker image run with the **built-in** packs/connectors; the published-package path for custom connectors via `sentinel.config.mjs` lands when the package is published.
 
 ## Ledger connector
 ```ts
