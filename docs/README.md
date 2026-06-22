@@ -44,8 +44,8 @@ decision.
   the `sentinel` CLI, and the publish/license plan.
 
 ## SDKs
-- **TypeScript** — `@montanalabs/sentinel-sdk` (zero-dependency client)
-- **Python** — `sentinel-guard` (stdlib-only)
+- **TypeScript** — `@montanalabs/sentinel` (zero-dependency client)
+- **Python** — `montanalabs-sentinel` (stdlib-only)
 
 Both are published separately; until a package is on your registry you can vendor the client from the
 `sentinel-sdks/` source (no third-party deps). See the [SDK reference](./sdk.md).

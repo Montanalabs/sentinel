@@ -18,8 +18,8 @@ Sentinel ships as three artifacts. The SDK (what your agent imports) and the sel
 
 That's the whole surface — intentionally tiny and dependency-free, so adopting it never pulls in a web server, a Postgres driver, or a model SDK.
 
-- **TypeScript** — `@montanalabs/sentinel-sdk` (npm, zero dependencies)
-- **Python** — `sentinel-guard` (PyPI, stdlib only)
+- **TypeScript** — `@montanalabs/sentinel` (npm, zero dependencies)
+- **Python** — `montanalabs-sentinel` (PyPI, stdlib only)
 
 ## What's in the server (this `sentinel` package)
 Run it via the `sentinel` CLI, the Docker image, or from source. It is source-available and stays inspectable — an independent gate you can't read isn't independent.
@@ -42,8 +42,8 @@ Run it via the `sentinel` CLI, the Docker image, or from source. It is source-av
 
 | Artifact | Distribution |
 |---|---|
-| TypeScript SDK | npm — `@montanalabs/sentinel-sdk` |
-| Python SDK | PyPI — `sentinel-guard` |
+| TypeScript SDK | npm — `@montanalabs/sentinel` |
+| Python SDK | PyPI — `montanalabs-sentinel` |
 | Server | standalone binary (GitHub Releases) + Docker image (GHCR); not published to npm |
 
 The multi-tenant control plane and the maintained vertical compliance packs live in a separate project, not in this repository.

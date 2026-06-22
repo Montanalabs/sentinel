@@ -87,7 +87,7 @@ Then: `sentinel init my-gate` to scaffold a project, or `sentinel start` to run 
 - **[Self-hosting Sentinel](./docs/self-hosting.md)** — run the sidecar in your own environment
 - **[Deploying in production](./docs/deploying.md)** — EC2, EKS/Kubernetes, ECS (with a ready k8s manifest)
 - **[Adjudication protocol](./docs/adjudication-protocol.md)** — execution-bound receipts, the flow diagram, and the threat model
-- **TypeScript SDK** (`@montanalabs/sentinel-sdk` on npm) · **Python SDK** (`sentinel-guard` on PyPI) — the thin clients your agent imports to call the gate (published as separate packages)
+- **TypeScript SDK** (`@montanalabs/sentinel` on npm) · **Python SDK** (`montanalabs-sentinel` on PyPI) — the thin clients your agent imports to call the gate (published as separate packages)
 
 ## Run locally (clone → start)
 
@@ -130,10 +130,10 @@ Drive it over the HTTP API: `POST /v1/guard` to gate an action, `GET /v1/records
 
 ### Use the SDK from an agent
 
-The agent-side SDK is a separate, **dependency-free** package — `@montanalabs/sentinel-sdk` (npm) — so installing it in an agent pulls in no server/DB/model libraries:
+The agent-side SDK is a separate, **dependency-free** package — `@montanalabs/sentinel` (npm) — so installing it in an agent pulls in no server/DB/model libraries:
 
 ```ts
-import { SentinelClient, Action } from "@montanalabs/sentinel-sdk"; // zero runtime deps
+import { SentinelClient, Action } from "@montanalabs/sentinel"; // zero runtime deps
 
 const sentinel = new SentinelClient({ endpoint: "http://localhost:4000" }); // fail-closed by default
 
@@ -178,7 +178,7 @@ SENTINEL_RATE_LIMIT_BURST=200 SENTINEL_RATE_LIMIT_RPS=100 SENTINEL_MAX_CONCURREN
 
 ## Packaging
 
-`npm run build` emits `dist/`; `npm run build:binary` bundles it into a standalone executable. The server is distributed as a **standalone binary** (the install scripts above) and a **Docker image** (`ghcr.io/montanalabs/sentinel`) — not published to npm. The agent-side client *is* a separate npm package (`@montanalabs/sentinel-sdk`).
+`npm run build` emits `dist/`; `npm run build:binary` bundles it into a standalone executable. The server is distributed as a **standalone binary** (the install scripts above) and a **Docker image** (`ghcr.io/montanalabs/sentinel`) — not published to npm. The agent-side client *is* a separate npm package (`@montanalabs/sentinel`).
 
 ## Provenance
 

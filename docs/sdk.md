@@ -4,8 +4,8 @@ The SDK is a thin client your agent calls at the action boundary. It submits the
 the sidecar and returns the verdict. **It never makes the decision** — the sidecar renders and signs
 it. The client's job is to call safely and **fail closed** when the sidecar can't be trusted.
 
-> Distribution note: the SDKs are published separately (TypeScript `@montanalabs/sentinel-sdk`,
-> Python `sentinel-guard`). Until a package is on your registry, you can vendor the client from the
+> Distribution note: the SDKs are published separately (TypeScript `@montanalabs/sentinel`,
+> Python `montanalabs-sentinel`). Until a package is on your registry, you can vendor the client from the
 > `sentinel-sdks/` source — it has no third-party dependencies.
 
 ## Construct a client
@@ -13,7 +13,7 @@ it. The client's job is to call safely and **fail closed** when the sidecar can'
 ::::tabs
 :::tab{title="TypeScript"}
 ```ts
-import { SentinelClient, Action } from '@montanalabs/sentinel-sdk';
+import { SentinelClient, Action } from '@montanalabs/sentinel';
 
 const sentinel = new SentinelClient({
   endpoint: 'http://localhost:4000',    // required — sidecar base URL
@@ -26,7 +26,7 @@ const sentinel = new SentinelClient({
 :::
 :::tab{title="Python"}
 ```python
-from sentinel_guard import SentinelClient, Action
+from montanalabs_sentinel import SentinelClient, Action
 
 sentinel = SentinelClient(
     "http://localhost:4000",            # required — sidecar base URL

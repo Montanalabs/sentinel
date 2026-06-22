@@ -159,5 +159,5 @@ Mount it into the container (`-v $PWD/sentinel.config.mjs:/app/sentinel.config.m
 - The sidecar handles `SIGTERM`/`SIGINT` gracefully (drains in-flight requests before exit), so rolling restarts don't drop decisions.
 
 ## Next
-- TypeScript SDK → `@montanalabs/sentinel-sdk` (npm)
-- Python SDK → `sentinel-guard` (PyPI)
+- TypeScript SDK → `@montanalabs/sentinel` (npm)
+- Python SDK → `montanalabs-sentinel` (PyPI)

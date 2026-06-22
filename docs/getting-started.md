@@ -49,7 +49,7 @@ Call the gate from your agent at the moment it is about to act — install the t
 ::::tabs
 :::tab{title="TypeScript"}
 ```ts
-import { SentinelClient, Action } from '@montanalabs/sentinel-sdk';
+import { SentinelClient, Action } from '@montanalabs/sentinel';
 
 const sentinel = new SentinelClient({ endpoint: 'http://localhost:4000' });
 
@@ -71,7 +71,7 @@ await payVendor(100, 'acct_ofac_1');      // BLOCK – sanctioned counterparty
 :::
 :::tab{title="Python"}
 ```python
-from sentinel_guard import SentinelClient, Action
+from montanalabs_sentinel import SentinelClient, Action
 
 sentinel = SentinelClient("http://localhost:4000")
 d = sentinel.guard(Action.payment({"amount": 200, "from": "acct_ops", "to": "vendor_42"}),
@@ -130,4 +130,4 @@ The slow tier now asks an independent Claude / GPT model whether each action is 
 - [HTTP API reference](./api-reference.md)
 - [Connectors](./connectors.md) — reconcile against your own systems of record
 - [Self-hosting & operations](./self-hosting.md)
-- SDKs: TypeScript (`@montanalabs/sentinel-sdk` on npm) · Python (`sentinel-guard` on PyPI)
+- SDKs: TypeScript (`@montanalabs/sentinel` on npm) · Python (`montanalabs-sentinel` on PyPI)
