@@ -110,7 +110,7 @@ import { SentinelClient, Action } from '@montanalabs/sentinel';
 
 const sendPayment = tool({
   description: 'Send a payment to a vendor',
-  parameters: z.object({ amount: z.number(), to: z.string() }),
+  inputSchema: z.object({ amount: z.number(), to: z.string() }), // AI SDK v5+ (was `parameters` in v4)
   execute: async ({ amount, to }) => {
     const decision = await sentinel.guard(
       Action.payment({ amount, from: 'acct_treasury', to }), { runId }, 'fintech.payments',
