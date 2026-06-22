@@ -1,31 +1,37 @@
-# Sentinel
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/sentinel-mark-dark.svg" />
+    <img width="64" src="assets/sentinel-mark-light.svg" alt="Sentinel" />
+  </picture>
+</p>
 
-**The independent verification & action-gate for AI agents.** The model proposes a consequential action; Sentinel independently verifies it, returns **ALLOW / BLOCK / ESCALATE**, and emits a **signed, tamper-evident provenance record** for every decision — the auditor-grade receipt a regulated buyer needs and that a model vendor structurally cannot provide for its own model.
+<h1 align="center">Sentinel</h1>
 
-> The model proposes; Sentinel disposes — and signs the receipt.
+<p align="center">
+  <strong>The independent action-gate for AI agents.</strong><br />
+  Independent by design, fail-safe by default, auditable end to end.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/montanalabs/sentinel?color=6457a6&label=release" alt="release" />
+  <img src="https://img.shields.io/badge/license-Apache--2.0-6457a6" alt="license" />
+  <img src="https://img.shields.io/badge/by-Montana%20Labs-171717" alt="Montana Labs" />
+</p>
 
 ## Why it exists
 
-When an agent is about to do something irreversible — move money, write a record, send a mail, close a ticket — there is usually **no independent, buyer-owned check** between the decision and the action. Teams hand-roll brittle guards or trust the model vendor's own "recovery," which an auditor cannot accept (a vendor certifying its own model is a conflict of interest). Sentinel is that independent gate, and it gets **more** valuable as models are trusted with higher-stakes actions.
+When an agent is about to do something irreversible — move money, write a record, send a mail, close a ticket — there is usually **no independent, buyer-owned check** between the decision and the action. Teams hand-roll brittle guards or trust the model vendor's own "recovery," which an auditor can't accept (a vendor certifying its own model is a conflict of interest). Sentinel is that independent gate, signing an auditor-grade receipt for every decision — and it gets **more** valuable as agents are trusted with higher-stakes actions.
 
 ## Architecture
 
-```
-            ┌──────────────── Buyer environment (VPC / on-prem) ─────────────-----───┐
-  Agent ──► │ [Sentinel SDK] ──guard(action,context,policy)──► [Sentinel Sidecar].   │
- (Claude/   │    thin shim                                       │ Verdict Engine    │
-  GPT/…)    │       ▲                                            │  ├ schema         │
-            │       └──── ALLOW | BLOCK | ESCALATE ◄─────────────┤  ├ policy DSL     │
-  execute() only on ALLOW                                        │  ├ reconcile      │──► ground-truth
-            │                                                    │  ├ data-bound.    │    (ledger/EHR)
-            │                          signed, hash-chained ◄────┤  └ 2nd opinion    │──► Claude / GPT
-            │                          provenance record         │ [Provenance]      │    (independent)
-            │                   ESCALATE ─► review queue ─► Slack/ServiceNow webhook │
-            └──────────────────────────────────┬──────────────────---────────────────┘
-                                        [Control plane] policy bundles · aggregation · GRC export → Vanta/Drata
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-dark.svg" />
+    <img src="assets/architecture-light.svg" alt="Sentinel architecture: agent → sidecar → your systems → signed provenance" width="680" />
+  </picture>
+</p>
 
-**Trust model:** the sidecar is a separate trust boundary from the agent. It holds the policy, renders the verdict, and signs the record with a key the agent never sees. Independence is enforced by isolation.
+**Trust model:** the sidecar is a separate trust boundary from the agent. It holds the policy, renders the verdict, and signs the record with a key the agent never sees. The agent that proposes an action never signs off on it.
 
 ## Checks (run as a fast sync tier + a slow async tier with a deadline)
 
@@ -109,7 +115,7 @@ Then send your first gated action — see **[docs/getting-started.md](./docs/get
 ```bash
 npm install
 cp .env.example .env          # add ANTHROPIC_API_KEY / OPENAI_API_KEY (or keep provider=mock)
-npm test                      # 377 unit tests, no external services
+npm test                      # 385 unit tests, no external services
 npm run demo                  # boots a real sidecar, drives it over HTTP end-to-end
 sentinel init my-gate     # scaffold a customized self-host project
 ```
@@ -155,7 +161,7 @@ if (SentinelClient.allowed(decision)) {
 | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | `POST /v1/guard`                                                         | Gate one action → decision (+ `escalationId` when ESCALATE) |
 | `POST /v1/guard/batch`                                                   | Gate a multi-agent fan-out in one linked chain              |
-| `GET /v1/records[?verdict=&tenant=&runId=&since=&until=&limit=&offset=]` | Query provenance                                            |
+| `GET /v1/records`                                                        | Query provenance (filters: `verdict`, `tenant`, `runId`, `since`, `until`, `limit`, `offset`) |
 | `GET /v1/records/:id`                                                    | One record                                                  |
 | `GET /v1/verify`                                                         | Verify the whole hash-chain is intact                       |
 | `GET /v1/export`                                                         | Export records (feed a GRC platform)                        |
@@ -187,6 +193,13 @@ one that was authorized, and an auditor can prove it afterward. The invariant:
 
 > Every protected execution corresponds to **exactly one** valid authorization receipt, and the executed
 > action **exactly matches** the authorized action.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/adjudication-dark.svg" />
+    <img src="assets/adjudication-light.svg" alt="Adjudication protocol: adjudicate → signed single-use receipt → validated execution → complete-mediation audit" width="680" />
+  </picture>
+</p>
 
 A proposal-time verifier — even an ideal independent model — cannot stop action **substitution**,
 **replay**, or **forged** execution, because it gates the proposal and nothing binds execution. Binding
@@ -261,7 +274,7 @@ examples/demo.ts
 
 ## Status
 
-377 unit tests + integration tests, all green. The cross-model second opinion supports Anthropic
+385 unit tests + integration tests, all green. The cross-model second opinion supports Anthropic
 and OpenAI (or a built-in `mock` provider for offline/dev), and the provenance store supports
 in-memory, SQLite, and Postgres. **You bring your own** model provider, API key, and database — set
 them in your `.env` (see [Getting started](./docs/getting-started.md) and

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Sentinel">
+  <mask id="gate"><rect width="48" height="48" fill="#fff"/><rect x="20" y="11" width="8" height="26" rx="4" fill="#000"/></mask>
+  <circle cx="24" cy="24" r="24" fill="#fafafa" mask="url(#gate)"/>
+</svg>

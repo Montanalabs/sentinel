@@ -31,77 +31,71 @@ Or run the official Docker image (entrypoint is `sentinel start`):
 docker run -p 4000:4000 --env-file .env ghcr.io/montanalabs/sentinel:latest
 ```
 
-## `sentinel init [dir] [--yes]`
+## `sentinel init`
+Interactive wizard that scaffolds a ready-to-run project.
 
-Interactive wizard that scaffolds a ready-to-run project. It asks for:
-
-- **Project name** and **port** (default `4000`)
-- **Second-opinion provider** — `mock` (offline, no key) · `anthropic` · `openai`, plus the model id
-- **Provenance store** — `memory` · `sqlite` · `postgres` (default), with a connection URL
-- **Built-in packs** — `fintech`, `healthcare` (comma-separated)
-- Whether to include a **custom-pack template**
-- Whether to **generate a signing seed** now
-
-It writes `.env`, `.gitignore`, `docker-compose.yml`, a `README.md`, and `sentinel.config.mjs`, then
-offers to bring up Postgres (if selected) and start the sidecar with `--watch`.
-
+**Usage:**
 ```bash
-sentinel init my-gate          # interactive
-sentinel init my-gate --yes    # non-interactive (defaults), for CI/scripts
+sentinel init [dir] [--yes]
 ```
+**Flags:**
+- `--yes`, `-y` — non-interactive; accept all defaults (for CI / scripts).
 
-**Postgres bring-up (since v1.0.1):** when you accept the bundled Postgres, the wizard publishes it on
-host port **5433** (→ container 5432) so it can't collide with a Postgres already on 5432, and starts
-it behind a branded spinner. If you supply your **own** `SENTINEL_DATABASE_URL`, the wizard skips
-Docker entirely and connects straight to your database. With no Docker available, it points you at the
-zero-infra SQLite store or your own Postgres rather than dead-ending.
+**Prompts:** project name & port (default `4000`); second-opinion provider (`mock` · `anthropic` · `openai`) + model; provenance store (`memory` · `sqlite` · `postgres`, default) + connection URL; built-in packs (`fintech`, `healthcare`); custom-pack template; signing seed.
+
+It writes `.env`, `.gitignore`, `docker-compose.yml`, `README.md`, and `sentinel.config.mjs`, then offers to bring up Postgres and start the sidecar with `--watch`.
+
+> **Postgres bring-up:** with the bundled Postgres the wizard publishes host port **5433** (→ container 5432) so it can't collide with a Postgres already on 5432. Supply your own `SENTINEL_DATABASE_URL` and it skips Docker entirely; with no Docker it points you at the zero-infra SQLite store rather than dead-ending.
 
 ## `sentinel start`
+Boot the sidecar from the current environment / `.env`. This is the Docker image's entrypoint.
 
-Boots the sidecar from the current environment / `.env`. This is the Docker image's entrypoint.
-
+**Usage:**
 ```bash
-sentinel start
-sentinel start --watch      # hot-reload .env and sentinel.config.* on save
+sentinel start [--watch]
 ```
+**Flags:**
+- `--watch` — hot-reload `.env` and `sentinel.config.*` on save. (Changing `SENTINEL_SIGNING_SEED` still needs a full restart — it's the signing identity.)
 
+**Notes:**
 - Reads all `SENTINEL_*` variables (see the [configuration table](./self-hosting.md#configuration-environment)).
-- Loads an optional **`sentinel.config.mjs`** from the working directory to wire custom
-  connectors/packs without forking (`SENTINEL_CONFIG=path` to point elsewhere).
-- Binds **loopback** (`127.0.0.1`) by default; set `SENTINEL_HOST=0.0.0.0` to listen on all interfaces
-  (only behind a trusted gateway).
-- Handles `SIGTERM`/`SIGINT` gracefully — drains in-flight requests before exit, so rolling restarts
-  don't drop decisions.
-- `--watch` re-applies `.env` and config changes live (changing `SENTINEL_SIGNING_SEED` still needs a
-  full restart, since it's the signing identity).
+- Loads an optional `sentinel.config.mjs` from the working directory (`SENTINEL_CONFIG=path` to point elsewhere) to wire custom connectors/packs without forking.
+- Binds **loopback** (`127.0.0.1`) by default; set `SENTINEL_HOST=0.0.0.0` to listen on all interfaces, only behind a trusted gateway.
+- Drains in-flight requests on `SIGTERM`/`SIGINT`, so rolling restarts don't drop decisions.
 
 ## `sentinel keygen`
+Print a fresh base64 Ed25519 seed for `SENTINEL_SIGNING_SEED` — the sidecar's **stable signing identity** across restarts. Without it, an ephemeral key is generated at boot and records can't be verified against a known key afterward. Treat it as a secret.
 
-Prints a fresh base64 Ed25519 seed. Put it in `.env` as `SENTINEL_SIGNING_SEED` to give the sidecar a
-**stable signing identity** across restarts (otherwise an ephemeral key is generated at boot and your
-records can't be verified against a known key after a restart).
-
+**Usage:**
+```bash
+sentinel keygen
+```
+**Example:**
 ```bash
 echo "SENTINEL_SIGNING_SEED=$(sentinel keygen)" >> .env
 ```
 
-Treat the seed as a secret — it is the identity that signs your audit trail.
+## `sentinel verify`
+Check a running sidecar's provenance chain via `/v1/verify`. Exits **0** when intact (`ok:true`), **1** otherwise — usable as a CI / health gate.
 
-## `sentinel verify [url]`
-
-Hits a running sidecar's `/v1/verify` and exits **0** when the provenance chain is intact (`ok:true`),
-**1** otherwise — so it's usable as a CI / health gate.
-
+**Usage:**
 ```bash
-sentinel verify                         # default http://localhost:4000
+sentinel verify [url]   # default http://localhost:4000, or $SENTINEL_URL
+```
+**Example:**
+```bash
 sentinel verify http://gate.internal:4000
 SENTINEL_URL=http://gate:4000 sentinel verify
 ```
 
-## `sentinel version` / `sentinel help`
+## `sentinel version` · `sentinel help`
+Print the build version (from the package / `SENTINEL_BUILD_VERSION`) or the usage banner.
 
-`version` prints the build version (resolved from the package / `SENTINEL_BUILD_VERSION`). `help`
-prints the usage banner.
+**Usage:**
+```bash
+sentinel version
+sentinel help
+```
 
 ## From source (no install)
 

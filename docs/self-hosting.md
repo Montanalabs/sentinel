@@ -47,12 +47,12 @@ For production set `SENTINEL_SIGNING_SEED` (stable, verifiable signer across res
 | `GET /readyz` | Readiness — `503` when the provenance store is unreachable (wire to your LB/k8s readiness probe) |
 | `POST /v1/guard` | Gate one action → `{ verdict, recordId, checks, reason?, escalationId? }` |
 | `POST /v1/guard/batch` | Gate a multi-agent fan-out in one linked chain |
-| `GET /v1/records[?verdict=&tenant=&runId=&since=&until=&limit=&offset=]` | Query provenance |
-| `GET /v1/records/:id` | One record |
+| `GET /v1/records` | Query provenance (filters: `verdict`, `tenant`, `runId`, `since`, `until`, `limit`, `offset`) |
+| `GET /v1/records/:id` | Fetch one record |
 | `GET /v1/verify` | Verify the whole hash-chain → `{ ok, brokenAt?, reason? }` |
 | `GET /v1/export` | Export records (feed a GRC platform / control plane) |
-| `GET /v1/escalations[?status=pending]` | Human review queue |
-| `POST /v1/escalations/:id/resolve` | `{ decision: approve\|deny, approver }` → appends a signed `human.review` record |
+| `GET /v1/escalations` | Human-review queue (filter: `status`) |
+| `POST /v1/escalations/:id/resolve` | Record a human approve/deny; appends a signed `human.review` record |
 
 ### Guard request/response
 ```jsonc
@@ -78,6 +78,7 @@ Built-in packs:
 Configure and register packs when embedding (see below):
 ```ts
 import { defaultRegistry } from 'sentinel';
+
 const registry = defaultRegistry(
   { ledger, clinical, provider },                       // ground-truth + second-opinion deps
   { fintech: { highValueThreshold: 25_000, approvers: ['treasury_ops'] } },
@@ -135,6 +136,7 @@ The stock CLI/image loads an optional **`sentinel.config.mjs`** (or `.js`, or `S
 // sentinel.config.mjs — loaded by `sentinel start` / the Docker image
 import { HttpLedgerConnector } from 'sentinel';
 import { myPack } from './my-pack.js';
+
 export const ledger = new HttpLedgerConnector('https://ledger.internal');
 export const packs = [myPack()];
 ```

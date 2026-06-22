@@ -16,38 +16,7 @@ Everything below exists to make that statement enforceable at execution time and
 
 ## Flow
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Agent
-    participant Gate as Sentinel Gate<br/>(Adjudicator)
-    participant Truth as Evidence /<br/>ground truth
-    participant Exec as Protected Executor<br/>(Validator + handler)
-    participant Audit as Auditor /<br/>witness
-
-    Agent->>Gate: adjudicate(action, context, policy, evidence)
-    Gate->>Truth: gather evidence (committed by digest)
-    Gate->>Gate: deterministic checks + independent model<br/>fail-safe rule (§10), policy & evidence commitments
-    alt final verdict = ALLOW
-        Gate-->>Agent: signed AuthorizationReceipt<br/>{actionDigest, contextDigest, policyDigest,<br/>evidenceDigest, nonce, expiresAt, maxExecutions}
-    else BLOCK / ESCALATE
-        Gate-->>Agent: no receipt (no executable token)
-    end
-
-    Agent->>Exec: execute(action′, receipt)
-    Note over Exec: Executor recomputes actionDigest(action′) itself —<br/>never trusts an agent-supplied digest
-    Exec->>Exec: validate: version, signature (trusted issuer key),<br/>expiry, action match, context match, policy, revocation
-    Exec->>Exec: consume nonce LAST (atomic, single-use)
-    alt valid AND action matches
-        Exec->>Exec: run handler
-        Exec-->>Audit: signed ExecutionReceipt (SUCCEEDED / FAILED)
-    else mismatch / replay / expired / untrusted
-        Exec-->>Audit: signed ExecutionReceipt (REJECTED) — handler never runs
-    end
-
-    Audit->>Audit: auditCompleteMediation(authReceipts, execReceipts)<br/>→ coverage + typed violations
-    Gate-->>Audit: periodic signed checkpoint (external witness)
-```
+::diagram{name="adjudication"}
 
 ## Components
 

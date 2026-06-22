@@ -80,7 +80,7 @@ retention. In brief:
 
 | Endpoint | Use |
 |---|---|
-| `GET /v1/records?verdict=&tenant=&runId=&since=&until=&limit=&offset=` | query the log |
+| `GET /v1/records` | query the log (filters: `verdict`, `tenant`, `runId`, `since`, `until`, `limit`, `offset`) |
 | `GET /v1/records/:id` | one record |
 | `GET /v1/analytics` | allow/block/escalate rates, by action type / tenant, top reasons |
 | `GET /v1/export` | export signed records (same filters) to feed a GRC / control-plane pipeline |

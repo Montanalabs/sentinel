@@ -9,22 +9,9 @@ one question, with evidence: **may this action proceed?**
 An agent that checks its own output is marking its own homework. Sentinel is a **separate trust
 boundary**: it holds the policy, reconciles the proposed action against your real systems of record,
 optionally asks an *independent* model for a second opinion, and renders a verdict it **signs with a
-key the agent never sees**. That independence is what makes the resulting audit trail acceptable to a
-reviewer — the thing approving the action is not the thing that proposed it.
+key the agent never sees**. The agent that proposes an action never signs off on it.
 
-```
-┌──────────┐   proposed action    ┌─────────────────────────┐   ground truth   ┌──────────────┐
-│  agent   │ ───────────────────▶ │   Sentinel sidecar      │ ───────────────▶ │ your ledger/ │
-│ (+ SDK)  │                      │   (separate process)    │ ◀─────────────── │ EHR / APIs   │
-│          │ ◀─────────────────── │                         │                  └──────────────┘
-└──────────┘  ALLOW/BLOCK/ESCALATE│  policy · checks · sign │
-                                   └───────────┬─────────────┘
-                                               │ append-only, signed
-                                               ▼
-                                   ┌─────────────────────────┐
-                                   │ hash-chained provenance │  ← every decision, tamper-evident
-                                   └─────────────────────────┘
-```
+::diagram{name="architecture"}
 
 ## The two components
 
@@ -64,7 +51,7 @@ model spend or network calls).
 
 ## Fail-safe by construction
 
-Sentinel is designed so that *uncertainty never becomes a silent ALLOW*:
+Uncertainty never becomes a silent ALLOW:
 
 - A slow check that misses its deadline → **ESCALATE**.
 - A ground-truth source that can't give a confident answer (`undefined` / `unknown`) → **ESCALATE**.
@@ -83,7 +70,7 @@ Sentinel is designed so that *uncertainty never becomes a silent ALLOW*:
   loopback by default — run it inside your trust boundary, behind your own authn / mTLS / network
   policy. See the [security model](./security.md).
 
-## Where to go next
+## Next
 
 - [Getting started](./getting-started.md) — zero to a gated action in ~10 minutes.
 - [Policy packs & the rule DSL](./policy-packs.md) — the built-in packs and how to write your own.

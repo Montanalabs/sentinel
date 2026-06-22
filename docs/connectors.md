@@ -52,6 +52,7 @@ const clinical = new HttpFhirConnector('https://fhir.internal');
 Pass connectors as pack dependencies; the built-in packs add the relevant checks automatically when a connector is present:
 ```ts
 import { buildSentinel } from 'sentinel';
+
 const { app } = await buildSentinel(config, { ledger, clinical });
 ```
 or with a registry directly:

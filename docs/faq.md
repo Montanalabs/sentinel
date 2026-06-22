@@ -1,5 +1,7 @@
 # FAQ & troubleshooting
 
+Answers to the questions that come up most when adopting, deploying, and operating Sentinel.
+
 ## Conceptual
 
 **How is this different from the agent checking its own output?**
@@ -85,7 +87,7 @@ directory (or mount it into the container) exporting `ledger` / `clinical` / `pa
 put it behind an authenticating gateway / mTLS on a private network and enable rate limiting. The
 `/v1/*` API is unauthenticated by design. See [security](./security.md).
 
-## Still stuck?
+## Next
 
 - [Concepts](./concepts.md) · [Getting started](./getting-started.md) · [HTTP API](./api-reference.md)
 - [Self-hosting & operations](./self-hosting.md) · [Security](./security.md)

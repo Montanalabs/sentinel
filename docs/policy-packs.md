@@ -39,6 +39,7 @@ Checks: `schema` → `policy:healthcare.record_write` (clinician sign-off when `
 ### Registering packs
 ```ts
 import { defaultRegistry } from 'sentinel';
+
 const registry = defaultRegistry(
   { ledger, clinical, provider },                                  // ground-truth + second-opinion deps
   { fintech: { highValueThreshold: 50_000 }, healthcare: { allowedRegions: ['EU'] } },

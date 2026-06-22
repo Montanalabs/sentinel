@@ -1,7 +1,6 @@
 # Security & trust model
 
-Sentinel's value is that it is **independent** and **fail-safe**. This page states precisely what it
-protects, what it assumes, and how to deploy it safely.
+What Sentinel protects, what it assumes you handle, and how to deploy it safely.
 
 ## Trust boundary
 
@@ -9,18 +8,16 @@ The sidecar is a **separate process / trust domain** from the agent. It holds th
 connectors, and the **signing key the agent never sees**. The agent can only *propose*; it cannot
 forge a verdict, because a verdict is a record signed by the sidecar's Ed25519 key.
 
-```
-  agent process            │  sidecar process (trust boundary)
-  ───────────              │  ─────────────────────────────────
-  proposes actions         │  owns policy + connectors + signing key
-  receives verdicts        │  renders + signs every decision
-  CANNOT sign / forge      │  CANNOT be bypassed without detection (hash chain)
-```
+| Agent process | Sidecar process — the trust boundary |
+|---|---|
+| Proposes actions | Owns the policy, the connectors, and the signing key |
+| Receives verdicts | Renders **and signs** every decision |
+| **Cannot** sign or forge a verdict | **Cannot** be bypassed without detection (the hash chain) |
 
 ## What it protects against
 
-- **An agent self-certifying.** The thing that approves is not the thing that proposed. A model
-  vendor blessing its own output isn't acceptable to an auditor; an independent gate is.
+- **An agent self-certifying.** A model vendor blessing its own output isn't acceptable to an
+  auditor; an independent gate is.
 - **Tampering with the audit trail.** Every decision is an append-only, hash-chained, signed record.
   Any insert/delete/edit breaks `GET /v1/verify`. See [provenance](./provenance.md).
 - **Silent failure.** Uncertainty resolves to ESCALATE/BLOCK, never a quiet ALLOW (see
